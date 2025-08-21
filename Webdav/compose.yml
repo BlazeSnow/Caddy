@@ -1,0 +1,12 @@
+services:
+  caddy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: blazesnow/caddy:webdav-alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - 80:80
+      - 443:443
+      - 443:443/udp
