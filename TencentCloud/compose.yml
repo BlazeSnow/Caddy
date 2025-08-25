@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: blazesnow/caddy:cloudflare-alpine
+    image: blazesnow/caddy:tencentcloud-alpine
     container_name: caddy
     restart: always
     ports:
