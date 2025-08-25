@@ -5,7 +5,7 @@
 Language/语言：
 
 - [English](/README.md)
-- [Simplified Chinese](/README.zh-CN.md)
+- [简体中文](/README.zh-CN.md)
 
 ## ACME-DNS
 
