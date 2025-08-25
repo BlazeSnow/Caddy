@@ -21,6 +21,7 @@ Language/语言：
 
 - Cloudflare
 - TencentCloud
+- EdgeOne
 
 ### Cloudflare
 
@@ -54,13 +55,37 @@ example.com {
 docker pull blazesnow/caddy:tencentcloud-alpine
 ```
 
-1. API设置页面：<https://console.dnspod.cn/account/token/apikey>
+1. API设置页面：<https://console.cloud.tencent.com/cam/capi>
 2. Caddyfile示例如下：
 
 ```Caddyfile
 example.com {
     tls {
         dns tencentcloud {
+            secret_id {env.TENCENTCLOUD_SECRET_ID}
+            secret_key {env.TENCENTCLOUD_SECRET_KEY}
+        }
+    }
+}
+```
+
+### EdgeOne
+
+![Docker Image Size (tag)](https://img.shields.io/docker/image-size/blazesnow/caddy/edgeone-alpine)
+
+> 启用Caddy的DNS质询提供商EdgeOne：<https://github.com/caddy-dns/edgeone>
+
+```shell
+docker pull blazesnow/caddy:edgeone-alpine
+```
+
+1. API设置页面：<https://console.cloud.tencent.com/cam/capi>
+2. Caddyfile示例如下：
+
+```Caddyfile
+example.com {
+    tls {
+        dns edgeone {
             secret_id {env.TENCENTCLOUD_SECRET_ID}
             secret_key {env.TENCENTCLOUD_SECRET_KEY}
         }
