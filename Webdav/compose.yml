@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     image: blazesnow/caddy:webdav-alpine
     container_name: caddy
-    restart: unless-stopped
+    restart: always
     ports:
       - 80:80
       - 443:443

@@ -29,6 +29,16 @@ DNS 质询会对候选主机名的 TXT 记录执行权威 DNS 查找，并查找
 - Zone.Zone:Read
 - Zone.DNS:Edit
 
+#### Caddyfile
+
+```Caddyfile
+example.com {
+    tls {
+        dns cloudflare {env.CF_API_TOKEN}
+    }
+}
+```
+
 ## Webdav
 
 > 启用Caddy的WebDAV插件
