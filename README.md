@@ -21,6 +21,7 @@ Providers currently supported by this project:
 
 - Cloudflare
 - TencentCloud
+- EdgeOne
 
 ### Cloudflare
 
