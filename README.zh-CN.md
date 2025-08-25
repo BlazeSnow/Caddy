@@ -2,6 +2,11 @@
 
 ![Docker Pulls](https://img.shields.io/docker/pulls/blazesnow/caddy)
 
+Language/语言：
+
+- [English](/README.md)
+- [简体中文](/README.zh-CN.md)
+
 ## ACME-DNS
 
 > 以下内容摘自：<https://caddyserver.com/docs/automatic-https#acme-challenges>
