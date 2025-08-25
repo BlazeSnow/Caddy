@@ -54,13 +54,37 @@ example.com {
 docker pull blazesnow/caddy:tencentcloud-alpine
 ```
 
-1. API settings page: <https://console.dnspod.cn/account/token/apikey>
+1. API settings page: <https://console.cloud.tencent.com/cam/capi>
 2. Example Caddyfile:
 
 ```Caddyfile
 example.com {
     tls {
         dns tencentcloud {
+            secret_id {env.TENCENTCLOUD_SECRET_ID}
+            secret_key {env.TENCENTCLOUD_SECRET_KEY}
+        }
+    }
+}
+```
+
+### EdgeOne
+
+![Docker Image Size (tag)](https://img.shields.io/docker/image-size/blazesnow/caddy/edgeone-alpine)
+
+> Enables the EdgeOne DNS challenge provider for Caddy: <https://github.com/caddy-dns/edgeone>
+
+```shell
+docker pull blazesnow/caddy:edgeone-alpine
+```
+
+1. API settings page: <https://console.cloud.tencent.com/cam/capi>
+2. Example Caddyfile:
+
+```Caddyfile
+example.com {
+    tls {
+        dns edgeone {
             secret_id {env.TENCENTCLOUD_SECRET_ID}
             secret_key {env.TENCENTCLOUD_SECRET_KEY}
         }
