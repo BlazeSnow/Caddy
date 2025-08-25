@@ -1,40 +1,41 @@
-# [Blazesnow/Caddy](https://hub.docker.com/r/blazesnow/caddy)
+# [BlazeSnow/Caddy](https://hub.docker.com/r/blazesnow/caddy)
 
 ![Docker Pulls](https://img.shields.io/docker/pulls/blazesnow/caddy)
 
-Language/语言：
+语言/Language：
 
-- [English](/README.md)
-- [简体中文](/README.zh-CN.md)
+- [简体中文](/README.md)
+- [English](/README.en.md)
 
 ## ACME-DNS
 
-> The following is an excerpt from: <https://caddyserver.com/docs/automatic-https#acme-challenges>
+> 以下内容摘自：<https://caddyserver.com/docs/automatic-https#acme-challenges>
 >
-> The DNS challenge performs an authoritative DNS lookup for the candidate hostname's TXT records, and looks for a special TXT record with a certain value. If the CA sees the expected value, a certificate is issued.
+> DNS 质询会对候选主机名的 TXT 记录执行权威 DNS 查找，并查找具有特定值的特殊 TXT 记录。如果 CA 发现预期值，则会颁发证书。
 >
-> This challenge does not require any open ports, and the server requesting a certificate does not need to be externally accessible. However, the DNS challenge requires configuration. Caddy needs to know the credentials to access your domain's DNS provider so it can set (and clear) the special TXT records. If the DNS challenge is enabled, other challenges are disabled by default.
+> 此质询不需要任何开放端口，请求证书的服务器也无需可从外部访问。但是，DNS 质询需要配置。Caddy 需要知道访问您域名的 DNS 提供商的凭据，以便设置（和清除）特殊 TXT 记录。如果启用了 DNS 质询，则默认情况下会禁用其他质询。
 >
-> Since ACME CAs follow DNS standards when looking up TXT records for challenge verification, you can use CNAME records to delegate answering the challenge to other DNS zones. This can be used to delegate the _acme-challenge subdomain to another zone. This is particularly useful if your DNS provider doesn't provide an API, or isn't supported by one of the DNS plugins for Caddy.
+> 由于 ACME CA 在查找 TXT 记录进行质询验证时遵循 DNS 标准，因此您可以使用 CNAME 记录将质询的应答委托给其他 DNS 区域。这可用于将 _acme-challenge 子域委托给另一个区域。如果您的 DNS 提供商不提供 API，或者 Caddy 的某个 DNS 插件不支持该 API，则此功能尤其有用。
 
-Providers currently supported by this project:
+本项目目前支持的提供商：
 
 - Cloudflare
 - TencentCloud
+- EdgeOne
 
 ### Cloudflare
 
 ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/blazesnow/caddy/cloudflare-alpine)
 
-> Enables the Cloudflare DNS challenge provider for Caddy: <https://github.com/caddy-dns/cloudflare>
+> 启用Caddy的DNS质询提供商Cloudflare：<https://github.com/caddy-dns/cloudflare>
 
 ```shell
 docker pull blazesnow/caddy:cloudflare-alpine
 ```
 
-1. API settings page: <https://dash.cloudflare.com/profile/api-tokens>
-2. API permissions need to be set to `Zone.Zone:Read` and `Zone.DNS:Edit`.
-3. Example Caddyfile:
+1. API设置页面：<https://dash.cloudflare.com/profile/api-tokens>
+2. API权限需要设置`Zone.Zone:Read`和`Zone.DNS:Edit`
+3. Caddyfile示例如下：
 
 ```Caddyfile
 example.com {
@@ -48,14 +49,14 @@ example.com {
 
 ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/blazesnow/caddy/tencentcloud-alpine)
 
-> Enables the TencentCloud (DNSPod) DNS challenge provider for Caddy: <https://github.com/caddy-dns/tencentcloud>
+> 启用Caddy的DNS质询提供商TencentCloud（DNSPod）：<https://github.com/caddy-dns/tencentcloud>
 
 ```shell
 docker pull blazesnow/caddy:tencentcloud-alpine
 ```
 
-1. API settings page: <https://console.dnspod.cn/account/token/apikey>
-2. Example Caddyfile:
+1. API设置页面：<https://console.cloud.tencent.com/cam/capi>
+2. Caddyfile示例如下：
 
 ```Caddyfile
 example.com {
@@ -68,14 +69,38 @@ example.com {
 }
 ```
 
+### EdgeOne
+
+![Docker Image Size (tag)](https://img.shields.io/docker/image-size/blazesnow/caddy/edgeone-alpine)
+
+> 启用Caddy的DNS质询提供商EdgeOne：<https://github.com/caddy-dns/edgeone>
+
+```shell
+docker pull blazesnow/caddy:edgeone-alpine
+```
+
+1. API设置页面：<https://console.cloud.tencent.com/cam/capi>
+2. Caddyfile示例如下：
+
+```Caddyfile
+example.com {
+    tls {
+        dns edgeone {
+            secret_id {env.TENCENTCLOUD_SECRET_ID}
+            secret_key {env.TENCENTCLOUD_SECRET_KEY}
+        }
+    }
+}
+```
+
 ## Webdav
 
 ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/blazesnow/caddy/webdav-alpine)
 
-> Enables the WebDAV plugin for Caddy
+> 启用Caddy的WebDAV插件
 
 ```shell
 docker pull blazesnow/caddy:webdav-alpine
 ```
 
-Usage instructions: <https://github.com/mholt/caddy-webdav>
+使用说明：<https://github.com/mholt/caddy-webdav>
