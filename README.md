@@ -1,4 +1,4 @@
-# [Blazesnow/Caddy](https://hub.docker.com/r/blazesnow/caddy)
+# [BlazeSnow/Caddy](https://hub.docker.com/r/blazesnow/caddy)
 
 ![Docker Pulls](https://img.shields.io/docker/pulls/blazesnow/caddy)
 
