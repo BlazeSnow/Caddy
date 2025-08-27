@@ -14,7 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      max-parallel: 1
       matrix:
       - name: cloudflare
         context: github.com/caddy-dns/cloudflare
