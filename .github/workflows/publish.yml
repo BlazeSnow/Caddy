@@ -51,6 +51,8 @@ jobs:
       run: chmod +x xcaddy_path.sh
 
     - name: Supplement Dockerfile
+      env:
+        xcaddy_path: ${{ matrix.context }}
       run: ./xcaddy_path.sh
 
     - name: Build and push
@@ -63,3 +65,6 @@ jobs:
           blazesnow/caddy-${{ matrix.name }}:alpine
           ghcr.io/blazesnow/caddy:${{ matrix.name }}-alpine
           ghcr.io/blazesnow/caddy-${{ matrix.name }}:alpine
+
+    - name: rm Dockerfile
+      run: rm Dockerfile
