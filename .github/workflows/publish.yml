@@ -53,6 +53,16 @@ jobs:
           context: github.com/caddy-dns/tencentcloud
         - name: edgeone
           context: github.com/caddy-dns/edgeone
+        - name: dnspod
+          context: github.com/caddy-dns/dnspod
+        - name: alidns
+          context: github.com/caddy-dns/alidns
+        - name: huaweicloud
+          context: github.com/caddy-dns/huaweicloud
+        - name: azure
+          context: github.com/caddy-dns/azure
+        - name: cloudns
+          context: github.com/caddy-dns/cloudns
 
     steps:
     - name: Checkout code
@@ -89,7 +99,7 @@ jobs:
       uses: docker/build-push-action@v6
       with:
         context: .
-        push: false
+        push: true
         tags: |
           blazesnow/caddy:${{ matrix.name }}-alpine
           blazesnow/caddy-${{ matrix.name }}:alpine
