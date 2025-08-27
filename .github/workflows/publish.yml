@@ -1,0 +1,95 @@
+name: Publish Caddy Plugin Alpine Image
+
+on:
+  workflow_dispatch:
+  schedule:
+  - cron: "0 16 * * *"
+  push:
+    branches:
+    - main
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-base-image:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Xcaddy Image
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        dockerfile: Dockerfile.xcaddy
+        push: true
+        tags: blazesnow/xcaddy:alpine
+
+  build-and-publish:
+    needs: build-base-image
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - name: cloudflare
+          context: github.com/caddy-dns/cloudflare
+        - name: webdav
+          context: github.com/mholt/caddy-webdav
+        - name: tencentcloud
+          context: github.com/caddy-dns/tencentcloud
+        - name: edgeone
+          context: github.com/caddy-dns/edgeone
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: blazesnow
+        password: ${{ secrets.TOKEN }}
+
+    - name: Login to GitHub
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Chmod
+      run: chmod +x xcaddy_path.sh
+
+    - name: Supplement Dockerfile
+      env:
+        xcaddy_path: ${{ matrix.context }}
+      run: ./xcaddy_path.sh
+
+    - name: Build and push
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        push: false
+        tags: |
+          blazesnow/caddy:${{ matrix.name }}-alpine
+          blazesnow/caddy-${{ matrix.name }}:alpine
+          ghcr.io/blazesnow/caddy:${{ matrix.name }}-alpine
+          ghcr.io/blazesnow/caddy-${{ matrix.name }}:alpine
+
+    - name: rm Dockerfile
+      run: rm Dockerfile
