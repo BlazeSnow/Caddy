@@ -34,6 +34,7 @@ jobs:
         tags: blazesnow/xcaddy:alpine
 
   build-and-publish:
+    needs: build-base-image
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
