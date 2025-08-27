@@ -1,11 +1,20 @@
 # 更新日志
 
+## v1.3.0
+
+2025-08-27 10:37:46
+
+- 添加新的ACME-DNS提供商：
+  - alidns
+  - huaweicloud
+  - azure
+  - cloudns
+
 ## v1.2.0
 
 2025-08-25 10:03:03
 
-- 发布了启用TencentCloud插件的首个版本
-- 发布了启用EdgeOne插件的首个版本
+- 发布了启用TencentCloud和EdgeOne插件的首个版本
 
 ## v1.1.0
 
