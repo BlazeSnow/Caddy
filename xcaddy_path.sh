@@ -2,10 +2,6 @@
 
 xcaddy_path=${xcaddy_path}
 
-echo "touch Dockerfile"
-
-touch Dockerfile
-
 echo "Supplementing Dockerfile with xcaddy path"
 
 cat >>Dockerfile <<EOF
