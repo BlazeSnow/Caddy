@@ -16,9 +16,15 @@
 
 本项目目前支持的提供商，各提供商使用说明见附链接：
 
-- cloudflare：<https://github.com/caddy-dns/cloudflare>
-- tencentcloud：<https://github.com/caddy-dns/tencentcloud>
-- edgeone：<https://github.com/caddy-dns/edgeone>
+| 提供商       | 使用说明                                    |
+| ------------ | ------------------------------------------- |
+| cloudflare   | <https://github.com/caddy-dns/cloudflare>   |
+| tencentcloud | <https://github.com/caddy-dns/tencentcloud> |
+| edgeone      | <https://github.com/caddy-dns/edgeone>      |
+| alidns       | <https://github.com/caddy-dns/alidns>       |
+| huaweicloud  | <https://github.com/caddy-dns/huaweicloud>  |
+| azure        | <https://github.com/caddy-dns/azure>        |
+| cloudns      | <https://github.com/caddy-dns/cloudns>      |
 
 ## Webdav
 
