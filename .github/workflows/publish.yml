@@ -6,7 +6,7 @@ on:
   - cron: "0 16 * * *"
   push:
     branches:
-    - dev
+    - main
 
 permissions:
   contents: read
@@ -30,7 +30,7 @@ jobs:
       with:
         context: .
         dockerfile: Dockerfile.xcaddy
-        push: false
+        push: true
         tags: blazesnow/xcaddy:alpine
 
   build-and-publish:
