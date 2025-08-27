@@ -28,8 +28,7 @@ jobs:
     - name: Build Xcaddy Image
       uses: docker/build-push-action@v6
       with:
-        context: .
-        dockerfile: Dockerfile.xcaddy
+        context: xcaddy
         push: true
         tags: blazesnow/xcaddy:alpine
 
