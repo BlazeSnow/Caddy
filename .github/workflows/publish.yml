@@ -15,14 +15,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-      - name: cloudflare
-        context: github.com/caddy-dns/cloudflare
-      - name: webdav
-        context: github.com/mholt/caddy-webdav
-      - name: tencentcloud
-        context: github.com/caddy-dns/tencentcloud
-      - name: edgeone
-        context: github.com/caddy-dns/edgeone
+        include:
+        - name: cloudflare
+          context: github.com/caddy-dns/cloudflare
+        - name: webdav
+          context: github.com/mholt/caddy-webdav
+        - name: tencentcloud
+          context: github.com/caddy-dns/tencentcloud
+        - name: edgeone
+          context: github.com/caddy-dns/edgeone
 
     steps:
     - name: Checkout code
