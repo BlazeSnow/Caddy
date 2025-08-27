@@ -12,6 +12,19 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        xcaddy_path:
+        - name: cloudflare
+          context: github.com/caddy-dns/cloudflare
+        - name: webdav
+          context: github.com/mholt/caddy-webdav
+        - name: tencentcloud
+          context: github.com/caddy-dns/tencentcloud
+        - name: edgeone
+          context: github.com/caddy-dns/edgeone
 
     steps:
     - name: Checkout code
