@@ -1,6 +1,4 @@
-FROM golang:alpine AS builder
-
-RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+FROM blazesnow/xcaddy:alpine AS builder
 
 WORKDIR /build
 

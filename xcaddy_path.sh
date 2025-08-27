@@ -5,9 +5,7 @@ xcaddy_path=${xcaddy_path}
 echo "Supplementing Dockerfile with xcaddy path"
 
 cat >>Dockerfile <<EOF
-FROM golang:alpine AS builder
-
-RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+FROM blazesnow/xcaddy:alpine AS builder
 
 WORKDIR /build
 
@@ -26,4 +24,5 @@ COPY ./Caddyfile /etc/caddy/Caddyfile
 EXPOSE 80 443 443/udp 2019
 
 CMD ["/usr/bin/caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+
 EOF
