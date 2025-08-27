@@ -4,7 +4,7 @@ RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 
 WORKDIR /build
 
-RUN xcaddy build --with github.com/caddy-dns/tencentcloud
+RUN xcaddy build --with $XCADDY_PATH
 
 FROM alpine:latest
 

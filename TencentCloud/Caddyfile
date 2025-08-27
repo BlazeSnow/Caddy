@@ -1,5 +1,0 @@
-:80 {
-	handle {
-		respond "https://github.com/BlazeSnow/Caddy"
-	}
-}
