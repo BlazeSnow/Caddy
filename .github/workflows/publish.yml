@@ -1,4 +1,4 @@
-name: Publish Caddy Cloudflare Alpine Image
+name: Publish Caddy Plugin Alpine Image
 
 on:
   workflow_dispatch:
@@ -39,10 +39,10 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v6
       with:
-        context: Cloudflare
+        context: TencentCloud
         push: true
         tags: |
-          blazesnow/caddy:cloudflare-alpine
-          ghcr.io/blazesnow/caddy:cloudflare-alpine
-          blazesnow/caddy-cloudflare:alpine
-          ghcr.io/blazesnow/caddy-cloudflare:alpine
+          blazesnow/caddy:tencentcloud-alpine
+          ghcr.io/blazesnow/caddy:tencentcloud-alpine
+          blazesnow/caddy-tencentcloud:alpine
+          ghcr.io/blazesnow/caddy-tencentcloud:alpine
