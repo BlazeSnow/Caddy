@@ -16,15 +16,14 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        xcaddy_path:
-        - name: cloudflare
-          context: github.com/caddy-dns/cloudflare
-        - name: webdav
-          context: github.com/mholt/caddy-webdav
-        - name: tencentcloud
-          context: github.com/caddy-dns/tencentcloud
-        - name: edgeone
-          context: github.com/caddy-dns/edgeone
+      - name: cloudflare
+        context: github.com/caddy-dns/cloudflare
+      - name: webdav
+        context: github.com/mholt/caddy-webdav
+      - name: tencentcloud
+        context: github.com/caddy-dns/tencentcloud
+      - name: edgeone
+        context: github.com/caddy-dns/edgeone
 
     steps:
     - name: Checkout code
@@ -58,10 +57,10 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v6
       with:
-        context: TencentCloud
-        push: true
+        context: .
+        push: false
         tags: |
-          blazesnow/caddy:tencentcloud-alpine
-          ghcr.io/blazesnow/caddy:tencentcloud-alpine
-          blazesnow/caddy-tencentcloud:alpine
-          ghcr.io/blazesnow/caddy-tencentcloud:alpine
+          blazesnow/caddy:${{ matrix.name }}-alpine
+          blazesnow/caddy-${{ matrix.name }}:alpine
+          ghcr.io/blazesnow/caddy:${{ matrix.name }}-alpine
+          ghcr.io/blazesnow/caddy-${{ matrix.name }}:alpine
