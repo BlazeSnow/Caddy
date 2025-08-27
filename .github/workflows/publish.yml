@@ -4,9 +4,6 @@ on:
   workflow_dispatch:
   schedule:
   - cron: "0 16 * * *"
-  push:
-    branches:
-    - main
 
 permissions:
   contents: read
@@ -53,8 +50,6 @@ jobs:
           context: github.com/caddy-dns/tencentcloud
         - name: edgeone
           context: github.com/caddy-dns/edgeone
-        - name: dnspod
-          context: github.com/caddy-dns/dnspod
         - name: alidns
           context: github.com/caddy-dns/alidns
         - name: huaweicloud
