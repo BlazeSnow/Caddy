@@ -11,8 +11,9 @@ RUN xcaddy build --with $xcaddy_path
 FROM alpine:latest
 
 # 设置存储目录
-ENV XDG_CONFIG_HOME /config
-ENV XDG_DATA_HOME /data
+ENV XDG_CONFIG_HOME=/config
+ENV XDG_DATA_HOME=/data
+RUN mkdir -p /config /data
 
 # 补齐依赖
 RUN apk add --no-cache ca-certificates libcap mailcap
