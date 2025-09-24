@@ -6,18 +6,53 @@ on:
       tag:
         description: 'Release tag'
         required: true
-        default: 'v1.2.0'
+        default: '1.3.1'
 
 permissions:
   contents: write
 
 jobs:
+  mark:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - name: cloudflare
+        - name: webdav
+        - name: tencentcloud
+        - name: edgeone
+        - name: alidns
+        - name: huaweicloud
+        - name: azure
+        - name: cloudns
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: blazesnow
+        password: ${{ secrets.TOKEN }}
+
+    - name: Docker Pull
+      run: docker pull blazesnow/caddy-${{ matrix.name }}:alpine
+
+    - name: Docker Tag
+      run: docker tag blazesnow/caddy-${{ matrix.name }}:alpine blazesnow/caddy-${{ matrix.name }}:${{ inputs.tag }}
+
+    - name: Docker Push
+      run: docker push blazesnow/caddy-${{ matrix.name }}:${{ inputs.tag }}
+
   publish:
     runs-on: ubuntu-latest
+    needs: mark
     steps:
     - name: Checkout code
       uses: actions/checkout@v5
 
     - uses: ncipollo/release-action@v1
       with:
-        tag: ${{ inputs.tag }}
+        tag: v${{ inputs.tag }}
