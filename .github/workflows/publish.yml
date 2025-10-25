@@ -78,6 +78,4 @@ jobs:
         push: true
         tags: |
           blazesnow/caddy:${{ matrix.name }}-alpine
-          blazesnow/caddy-${{ matrix.name }}:alpine
           ghcr.io/blazesnow/caddy:${{ matrix.name }}-alpine
-          ghcr.io/blazesnow/caddy-${{ matrix.name }}:alpine
