@@ -1,13 +1,4 @@
 # 构建镜像
-FROM blazesnow/xcaddy:alpine AS builder
-
-# 设置工作目录
-WORKDIR /build
-
-# 构建可执行文件
-RUN xcaddy build --with $xcaddy_path
-
-# 最终镜像
 FROM alpine:latest
 
 # 创建配置和数据目录
@@ -17,7 +8,7 @@ RUN mkdir -p /config /data
 RUN apk add --no-cache ca-certificates libcap mailcap
 
 # 复制可执行文件
-COPY --from=builder /build/caddy /usr/bin/caddy
+COPY caddy /usr/bin/caddy
 
 # 设置可执行文件权限
 RUN chmod +x /usr/bin/caddy
