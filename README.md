@@ -29,3 +29,11 @@
 ## Webdav
 
 使用说明：<https://github.com/mholt/caddy-webdav>
+
+## 许可证
+
+自2025年10月28日起，本软件以MIT的条款发布。
+
+### 第三方组件许可证
+
+本软件中包含的Caddy软件遵守其原有的许可证。
