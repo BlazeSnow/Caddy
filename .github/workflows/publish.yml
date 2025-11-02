@@ -11,6 +11,7 @@ on:
 permissions:
   contents: read
   packages: write
+  actions: write
 
 jobs:
   build:
@@ -41,13 +42,50 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v5
 
+    - name: Set up golang
+      uses: actions/setup-go@v6
+      with:
+        go-version: 'stable'
+
+    - name: Set VAR_NAME
+      run: echo "VAR_NAME=${{ matrix.name }}_version" >> $GITHUB_ENV
+
+    - name: Import CACHED_VERSION
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        CACHED_VERSION=$(gh variable get ${{ env.VAR_NAME }} -R ${{ github.repository }} 2>/dev/null || echo "none")
+        echo "CACHED_VERSION=$CACHED_VERSION" >> $GITHUB_ENV
+
+    - name: Get CURRENT_VERSION
+      run: |
+        CADDY_VERSION=$(go list -m -json github.com/caddyserver/caddy/v2@latest | jq -r '.Version')
+        PLUGIN_VERSION=$(go list -m -json ${{ matrix.context }}@latest | jq -r '.Version')
+        CURRENT_VERSION="${CADDY_VERSION}-${PLUGIN_VERSION}"
+        echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+
+    - name: Check if build needed
+      run: |
+        echo "当前版本：${{ env.CURRENT_VERSION }}"
+        echo "缓存版本：${{ env.CACHED_VERSION }}"
+
+        if [ "${{ env.CURRENT_VERSION }}" != "${{ env.CACHED_VERSION }}" ] ; then
+          echo "需要构建"
+          echo "should_build=true" >> $GITHUB_ENV
+        else
+          echo "跳过构建"
+          echo "should_build=false" >> $GITHUB_ENV
+        fi
+
     - name: Login to Docker Hub
+      if: env.should_build == 'true'
       uses: docker/login-action@v3
       with:
         username: blazesnow
         password: ${{ secrets.TOKEN }}
 
     - name: Login to GitHub
+      if: env.should_build == 'true'
       uses: docker/login-action@v3
       with:
         registry: ghcr.io
@@ -55,27 +93,37 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Set up QEMU
+      if: env.should_build == 'true'
       uses: docker/setup-qemu-action@v3
 
     - name: Set up Docker Buildx
+      if: env.should_build == 'true'
       uses: docker/setup-buildx-action@v3
 
-    - name: Set up golang
-      uses: actions/setup-go@v6
-      with:
-        go-version: 'stable'
-
     - name: Get XCaddy
+      if: env.should_build == 'true'
       run: go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 
     - name: Build Caddy with plugin
+      if: env.should_build == 'true'
       run: xcaddy build --with ${{ matrix.context }} --output ./caddy
 
     - name: Build and push
+      if: env.should_build == 'true'
       uses: docker/build-push-action@v6
       with:
         context: .
         push: true
         tags: |
           blazesnow/caddy:${{ matrix.name }}-alpine
+          blazesnow/caddy:${{ matrix.name }}
           ghcr.io/blazesnow/caddy:${{ matrix.name }}-alpine
+          ghcr.io/blazesnow/caddy:${{ matrix.name }}
+
+    - name: Output CURRENT_VERSION
+      if: env.should_build == 'true'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "更新变量：${{ env.VAR_NAME }}=${{ env.CURRENT_VERSION }}"
+        gh variable set ${{ env.VAR_NAME }} --body "${{ env.CURRENT_VERSION }}" -R ${{ github.repository }}
