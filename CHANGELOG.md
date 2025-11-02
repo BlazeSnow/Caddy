@@ -1,5 +1,31 @@
 # 更新日志
 
+## v1.4.1
+
+2025-11-02 12:58
+
+- 添加构建前版本检查
+- 添加新的ACME-DNS提供商：
+  - route53
+  - duckdns
+  - porkbun
+  - namecheap
+  - acmedns
+  - digitalocean
+  - hetzner
+  - ovh
+  - desec
+  - ionos
+  - rfc2136
+  - powerdns
+  - netcup
+  - inwx
+  - googleclouddns
+  - gandi
+  - vercel
+  - netlify
+  - godaddy
+
 ## v1.4.0
 
 2025-10-28 13:30

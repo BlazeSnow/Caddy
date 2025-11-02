@@ -20,15 +20,32 @@
 
 本项目目前支持的提供商，各提供商使用说明见附链接：
 
-| 提供商       | 使用说明                                    |
-| ------------ | ------------------------------------------- |
-| cloudflare   | <https://github.com/caddy-dns/cloudflare>   |
-| tencentcloud | <https://github.com/caddy-dns/tencentcloud> |
-| edgeone      | <https://github.com/caddy-dns/edgeone>      |
-| alidns       | <https://github.com/caddy-dns/alidns>       |
-| huaweicloud  | <https://github.com/caddy-dns/huaweicloud>  |
-| azure        | <https://github.com/caddy-dns/azure>        |
-| cloudns      | <https://github.com/caddy-dns/cloudns>      |
+| 提供商         | 使用说明                                      |
+| -------------- | --------------------------------------------- |
+| cloudflare     | <https://github.com/caddy-dns/cloudflare>     |
+| tencentcloud   | <https://github.com/caddy-dns/tencentcloud>   |
+| edgeone        | <https://github.com/caddy-dns/edgeone>        |
+| alidns         | <https://github.com/caddy-dns/alidns>         |
+| huaweicloud    | <https://github.com/caddy-dns/huaweicloud>    |
+| azure          | <https://github.com/caddy-dns/azure>          |
+| route53        | <https://github.com/caddy-dns/route53>        |
+| duckdns        | <https://github.com/caddy-dns/duckdns>        |
+| porkbun        | <https://github.com/caddy-dns/porkbun>        |
+| namecheap      | <https://github.com/caddy-dns/namecheap>      |
+| acmedns        | <https://github.com/caddy-dns/acmedns>        |
+| digitalocean   | <https://github.com/caddy-dns/digitalocean>   |
+| hetzner        | <https://github.com/caddy-dns/hetzner>        |
+| ovh            | <https://github.com/caddy-dns/ovh>            |
+| desec          | <https://github.com/caddy-dns/desec>          |
+| ionos          | <https://github.com/caddy-dns/ionos>          |
+| rfc2136        | <https://github.com/caddy-dns/rfc2136>        |
+| powerdns       | <https://github.com/caddy-dns/powerdns>       |
+| netcup         | <https://github.com/caddy-dns/netcup>         |
+| inwx           | <https://github.com/caddy-dns/inwx>           |
+| googleclouddns | <https://github.com/caddy-dns/googleclouddns> |
+| vercel         | <https://github.com/caddy-dns/vercel>         |
+| netlify        | <https://github.com/caddy-dns/netlify>        |
+| godaddy        | <https://github.com/caddy-dns/godaddy>        |
 
 ## Webdav
 

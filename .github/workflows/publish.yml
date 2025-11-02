@@ -36,6 +36,44 @@ jobs:
           context: github.com/caddy-dns/azure
         - name: cloudns
           context: github.com/caddy-dns/cloudns
+        - name: route53
+          context: github.com/caddy-dns/route53
+        - name: duckdns
+          context: github.com/caddy-dns/duckdns
+        - name: porkbun
+          context: github.com/caddy-dns/porkbun
+        - name: namecheap
+          context: github.com/caddy-dns/namecheap
+        - name: acmedns
+          context: github.com/caddy-dns/acmedns
+        - name: digitalocean
+          context: github.com/caddy-dns/digitalocean
+        - name: hetzner
+          context: github.com/caddy-dns/hetzner
+        - name: ovh
+          context: github.com/caddy-dns/ovh
+        - name: desec
+          context: github.com/caddy-dns/desec
+        - name: ionos
+          context: github.com/caddy-dns/ionos
+        - name: rfc2136
+          context: github.com/caddy-dns/rfc2136
+        - name: powerdns
+          context: github.com/caddy-dns/powerdns
+        - name: netcup
+          context: github.com/caddy-dns/netcup
+        - name: inwx
+          context: github.com/caddy-dns/inwx
+        - name: googleclouddns
+          context: github.com/caddy-dns/googleclouddns
+        - name: gandi
+          context: github.com/caddy-dns/gandi
+        - name: vercel
+          context: github.com/caddy-dns/vercel
+        - name: netlify
+          context: github.com/caddy-dns/netlify
+        - name: godaddy
+          context: github.com/caddy-dns/godaddy
 
     steps:
     - name: Checkout code
