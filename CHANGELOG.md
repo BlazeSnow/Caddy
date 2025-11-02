@@ -2,14 +2,13 @@
 
 ## v1.4.1
 
-2025-11-02 12:58
+2025-11-02 13:10
 
 - 添加构建前版本检查
 - 添加新的ACME-DNS提供商：
   - route53
   - duckdns
   - porkbun
-  - namecheap
   - acmedns
   - digitalocean
   - hetzner
@@ -22,7 +21,6 @@
   - inwx
   - googleclouddns
   - gandi
-  - vercel
   - netlify
   - godaddy
 

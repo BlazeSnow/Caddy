@@ -31,7 +31,6 @@
 | route53        | <https://github.com/caddy-dns/route53>        |
 | duckdns        | <https://github.com/caddy-dns/duckdns>        |
 | porkbun        | <https://github.com/caddy-dns/porkbun>        |
-| namecheap      | <https://github.com/caddy-dns/namecheap>      |
 | acmedns        | <https://github.com/caddy-dns/acmedns>        |
 | digitalocean   | <https://github.com/caddy-dns/digitalocean>   |
 | hetzner        | <https://github.com/caddy-dns/hetzner>        |
@@ -43,7 +42,6 @@
 | netcup         | <https://github.com/caddy-dns/netcup>         |
 | inwx           | <https://github.com/caddy-dns/inwx>           |
 | googleclouddns | <https://github.com/caddy-dns/googleclouddns> |
-| vercel         | <https://github.com/caddy-dns/vercel>         |
 | netlify        | <https://github.com/caddy-dns/netlify>        |
 | godaddy        | <https://github.com/caddy-dns/godaddy>        |
 

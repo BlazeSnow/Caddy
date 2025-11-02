@@ -42,8 +42,6 @@ jobs:
           context: github.com/caddy-dns/duckdns
         - name: porkbun
           context: github.com/caddy-dns/porkbun
-        - name: namecheap
-          context: github.com/caddy-dns/namecheap
         - name: acmedns
           context: github.com/caddy-dns/acmedns
         - name: digitalocean
@@ -68,8 +66,6 @@ jobs:
           context: github.com/caddy-dns/googleclouddns
         - name: gandi
           context: github.com/caddy-dns/gandi
-        - name: vercel
-          context: github.com/caddy-dns/vercel
         - name: netlify
           context: github.com/caddy-dns/netlify
         - name: godaddy
