@@ -11,7 +11,6 @@ on:
 permissions:
   contents: read
   packages: write
-  actions: write
 
 jobs:
   build:
@@ -52,7 +51,7 @@ jobs:
 
     - name: Import CACHED_VERSION
       env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.PAT }}
       run: |
         CACHED_VERSION=$(gh variable get ${{ env.VAR_NAME }} -R ${{ github.repository }} 2>/dev/null || echo "none")
         echo "CACHED_VERSION=$CACHED_VERSION" >> $GITHUB_ENV
@@ -123,7 +122,7 @@ jobs:
     - name: Output CURRENT_VERSION
       if: env.should_build == 'true'
       env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ secrets.PAT }}
       run: |
         echo "更新变量：${{ env.VAR_NAME }}=${{ env.CURRENT_VERSION }}"
         gh variable set ${{ env.VAR_NAME }} --body "${{ env.CURRENT_VERSION }}" -R ${{ github.repository }}
