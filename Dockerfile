@@ -1,6 +1,9 @@
 # 构建镜像
 FROM alpine:latest
 
+LABEL maintainer="hello@blazesnow.com"
+LABEL repository="https://github.com/BlazeSnow/Caddy"
+
 # 创建配置和数据目录
 RUN mkdir -p /config /data
 
