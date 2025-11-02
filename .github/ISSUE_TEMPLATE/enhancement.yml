@@ -1,0 +1,31 @@
+name: 提交新ACME-DNS提供商
+description: 提交ACME-DNS提供商的相关信息
+title: "[新ACME-DNS提供商] "
+labels: [ "submission" ]
+body:
+- type: textarea
+  id: provider_name
+  attributes:
+    label: 提供商名称
+    description: 请填写ACME-DNS提供商名称
+    placeholder: 例如：cloudflare
+  validations:
+    required: true
+
+- type: textarea
+  id: provider_link
+  attributes:
+    label: 提供商链接
+    description: 请填写ACME-DNS提供商链接
+    placeholder: 例如：https://github.com/caddy-dns/cloudflare
+  validations:
+    required: true
+
+- type: textarea
+  id: additional
+  attributes:
+    label: 其他补充信息
+    description: 如果有其他相关信息，请在此补充（可选）
+    placeholder: 如果有其他相关信息，请在此补充（可选）
+  validations:
+    required: false
