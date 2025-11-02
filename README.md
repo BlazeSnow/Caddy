@@ -1,6 +1,10 @@
 # BlazeSnow/Caddy
 
-![Docker Pulls](https://img.shields.io/docker/pulls/blazesnow/caddy)
+![Docker Pulls](https://img.shields.io/docker/pulls/blazesnow/caddy?style=for-the-badge)
+![Docker Image Size](https://img.shields.io/docker/image-size/blazesnow/caddy?style=for-the-badge)
+![GitHub last commit (branch)](https://img.shields.io/github/last-commit/BlazeSnow/Caddy/main?style=for-the-badge)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/BlazeSnow/Caddy/publish.yml?style=for-the-badge)
+![GitHub License](https://img.shields.io/github/license/BlazeSnow/Caddy?style=for-the-badge)
 
 镜像名称见：<https://hub.docker.com/r/blazesnow/caddy/tags>
 
