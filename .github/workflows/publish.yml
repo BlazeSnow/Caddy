@@ -5,12 +5,20 @@ on:
     branches:
     - main
   workflow_dispatch:
+    inputs:
+      force_build:
+        description: 'Force build all images'
+        required: true
+        default: 'false'
   schedule:
   - cron: "0 16 * * *"
 
 permissions:
   contents: read
   packages: write
+
+concurrency:
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -105,6 +113,9 @@ jobs:
         if [ "${{ env.CURRENT_VERSION }}" != "${{ env.CACHED_VERSION }}" ] ; then
           echo "需要构建"
           echo "should_build=true" >> $GITHUB_ENV
+        elif [ "${{ github.event.inputs.force_build }}" = "true" ] ; then
+          echo "强制构建"
+          echo "should_build=true" >> $GITHUB_ENV
         else
           echo "跳过构建"
           echo "should_build=false" >> $GITHUB_ENV
@@ -147,6 +158,7 @@ jobs:
       with:
         context: .
         push: true
+        platforms: linux/amd64,linux/arm64
         tags: |
           blazesnow/caddy:${{ matrix.name }}-alpine
           blazesnow/caddy:${{ matrix.name }}
