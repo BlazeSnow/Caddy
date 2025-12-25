@@ -1,12 +1,12 @@
 # 构建镜像
-FROM caddy:builder AS builder
+FROM ghcr.io/blazesnow/caddy:builder
 
 # 开始构建
 ARG PLUGIN
 RUN xcaddy build --with ${PLUGIN} --output /caddy
 
 # 运行镜像
-FROM alpine:latest
+FROM ghcr.io/blazesnow/alpine:latest
 
 LABEL maintainer="hello@blazesnow.com"
 LABEL repository="https://github.com/BlazeSnow/Caddy"
