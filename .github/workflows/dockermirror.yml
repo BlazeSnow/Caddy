@@ -26,10 +26,10 @@ jobs:
         include:
         - name: xcaddy
           source: caddy:builder
-          target: ghcr.io/${{ github.repository_owner }}/caddy:builder
+          target: ghcr.io/blazesnow/caddy:builder
         - name: alpine
           source: alpine:latest
-          target: ghcr.io/${{ github.repository_owner }}/alpine:latest
+          target: ghcr.io/blazesnow/alpine:latest
 
     steps:
     - name: Checkout
