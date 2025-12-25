@@ -1,0 +1,73 @@
+name: Docker Mirror
+
+on:
+  push:
+    branches:
+    - main
+    - dev
+  workflow_dispatch:
+  schedule:
+  - cron: "0 16 * * *"
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  platforms: linux/amd64,linux/arm64,linux/arm/v7
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - name: xcaddy
+          source: caddy:builder
+          target: ghcr.io/blazesnow/caddy:builder
+        - name: alpine
+          source: alpine:latest
+          target: ghcr.io/blazesnow/alpine:latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    - name: Setup Crane
+      uses: imjasonh/setup-crane@v0.4
+
+    - name: Docker Login
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Get source digest
+      run: |
+        SOURCE_digest=$(crane digest ${{ matrix.source }} 2>/dev/null || true) && \
+        echo "SOURCE_digest=$SOURCE_digest" >> $GITHUB_ENV
+
+    - name: Get target digest
+      run: |
+        TARGET_digest=$(crane digest ${{ matrix.target }} 2>/dev/null || true) && \
+        echo "TARGET_digest=$TARGET_digest" >> $GITHUB_ENV
+
+    - name: Check if mirror needed
+      run: |
+        echo "Source Digest: ${{ env.SOURCE_digest }}"
+        echo "Target Digest: ${{ env.TARGET_digest }}"
+
+        if [ -n "$SOURCE_digest" ] && [ -n "$TARGET_digest" ] && [ "$SOURCE_digest" = "$TARGET_digest" ] ; then
+          echo "跳过镜像"
+          echo "should_mirror=false" >> $GITHUB_ENV
+        else
+          echo "需要镜像"
+          echo "should_mirror=true" >> $GITHUB_ENV
+        fi
+
+    - name: Mirror xcaddy
+      if: env.should_mirror == 'true'
+      run: crane copy ${{ matrix.source }} ${{ matrix.target }}
