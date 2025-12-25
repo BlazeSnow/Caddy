@@ -4,6 +4,7 @@ on:
   push:
     branches:
     - main
+    - dev
   workflow_dispatch:
   schedule:
   - cron: "0 16 * * *"
@@ -59,12 +60,12 @@ jobs:
         echo "Source Digest: ${{ env.SOURCE_digest }}"
         echo "Target Digest: ${{ env.TARGET_digest }}"
 
-        if [ "${{ env.SOURCE_digest }}" != "${{ env.TARGET_digest }}" ] ; then
-          echo "需要镜像"
-          echo "should_mirror=true" >> $GITHUB_ENV
-        else
+        if [ -n "$SOURCE_digest" ] && [ -n "$TARGET_digest" ] && [ "$SOURCE_digest" = "$TARGET_digest" ] ; then
           echo "跳过镜像"
           echo "should_mirror=false" >> $GITHUB_ENV
+        else
+          echo "需要镜像"
+          echo "should_mirror=true" >> $GITHUB_ENV
         fi
 
     - name: Mirror xcaddy
