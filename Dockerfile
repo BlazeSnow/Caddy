@@ -1,5 +1,5 @@
 # 构建镜像
-FROM ghcr.io/blazesnow/caddy:builder
+FROM ghcr.io/blazesnow/caddy:builder AS builder
 
 # 开始构建
 ARG PLUGIN
