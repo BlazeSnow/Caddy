@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       force_build:
-        description: 'Force build all images'
+        description: '强制构建所有插件镜像，忽略版本缓存。'
         required: true
         default: 'false'
   schedule:
