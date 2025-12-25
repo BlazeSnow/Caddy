@@ -1,4 +1,11 @@
 # 构建镜像
+FROM caddy:builder AS builder
+
+# 开始构建
+ARG PLUGIN
+RUN xcaddy build --with ${PLUGIN} --output /caddy
+
+# 运行镜像
 FROM alpine:latest
 
 LABEL maintainer="hello@blazesnow.com"
@@ -11,7 +18,7 @@ RUN mkdir -p /config /data
 RUN apk add --no-cache ca-certificates libcap mailcap
 
 # 复制可执行文件
-COPY caddy /usr/bin/caddy
+COPY --from=builder /caddy /usr/bin/caddy
 
 # 设置可执行文件权限
 RUN chmod +x /usr/bin/caddy

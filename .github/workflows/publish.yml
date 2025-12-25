@@ -144,21 +144,17 @@ jobs:
       if: env.should_build == 'true'
       uses: docker/setup-buildx-action@v3
 
-    - name: Get XCaddy
-      if: env.should_build == 'true'
-      run: go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
-
-    - name: Build Caddy with plugin
-      if: env.should_build == 'true'
-      run: xcaddy build --with ${{ matrix.context }} --output ./caddy
-
     - name: Build and push
       if: env.should_build == 'true'
       uses: docker/build-push-action@v6
+      env:
+        NAME: ${{ matrix.name }}
       with:
         context: .
         push: true
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/arm/v6,linux/arm/v7,linux/arm64,linux/amd64
+        build-args: |
+          PLUGIN=${{ matrix.context }}
         tags: |
           blazesnow/caddy:${{ matrix.name }}-alpine
           blazesnow/caddy:${{ matrix.name }}
