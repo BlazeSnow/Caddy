@@ -69,4 +69,4 @@ jobs:
 
     - name: Mirror xcaddy
       if: env.should_mirror == 'true'
-      run: crane copy --platforms ${{ env.platforms }} ${{ matrix.source }} ${{ matrix.target }}
+      run: crane copy ${{ matrix.source }} ${{ matrix.target }}
