@@ -8,6 +8,10 @@ on:
   schedule:
   - cron: "0 16 * * *"
 
+permissions:
+  contents: read
+  packages: write
+
 env:
   platforms: linux/amd64,linux/arm64,linux/arm/v7
 
@@ -42,12 +46,12 @@ jobs:
 
     - name: Get source digest
       run: |
-        SOURCE_digest=$(crane digest --platform=$PLATFORMS $SOURCE 2>/dev/null || true) && \
+        SOURCE_digest=$(crane digest ${{ matrix.source }} 2>/dev/null || true) && \
         echo "SOURCE_digest=$SOURCE_digest" >> $GITHUB_ENV
 
     - name: Get target digest
       run: |
-        TARGET_digest=$(crane digest --platform=$PLATFORMS $TARGET 2>/dev/null || true) && \
+        TARGET_digest=$(crane digest ${{ matrix.target }} 2>/dev/null || true) && \
         echo "TARGET_digest=$TARGET_digest" >> $GITHUB_ENV
 
     - name: Check if mirror needed
@@ -65,4 +69,4 @@ jobs:
 
     - name: Mirror xcaddy
       if: env.should_mirror == 'true'
-      run: crane copy ${{ matrix.source }} ${{ matrix.target }}
+      run: crane copy --platforms ${{ env.platforms }} ${{ matrix.source }} ${{ matrix.target }}
