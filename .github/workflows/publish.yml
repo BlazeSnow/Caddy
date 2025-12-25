@@ -147,8 +147,6 @@ jobs:
     - name: Build and push
       if: env.should_build == 'true'
       uses: docker/build-push-action@v6
-      env:
-        NAME: ${{ matrix.name }}
       with:
         context: .
         push: true
