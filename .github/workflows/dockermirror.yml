@@ -1,10 +1,6 @@
 name: Docker Mirror
 
 on:
-  push:
-    branches:
-    - main
-    - dev
   workflow_dispatch:
   schedule:
   - cron: "0 16 * * *"
