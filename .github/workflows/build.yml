@@ -18,58 +18,12 @@ permissions:
   contents: read
   packages: write
 
-env:
-  ALPINE_SOURCE: alpine:3.22
-  ALPINE_TARGET: ghcr.io/blazesnow/alpine:3.22
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  ensure-base:
-    runs-on: ubuntu-latest
-    outputs:
-      alpine_digest: ${{ steps.alpine.outputs.digest }}
-
-    steps:
-    - name: Login to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: blazesnow
-        password: ${{ secrets.TOKEN }}
-
-    - name: Login to GitHub
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Setup Crane
-      uses: imjasonh/setup-crane@v0.4
-
-    - name: Ensure Alpine base image
-      id: alpine
-      run: |
-        set -eu
-
-        SOURCE_DIGEST=$(crane digest "${ALPINE_SOURCE}")
-        TARGET_DIGEST=$(crane digest "${ALPINE_TARGET}" 2>/dev/null || true)
-
-        echo "Source Digest: ${SOURCE_DIGEST}"
-        echo "Target Digest: ${TARGET_DIGEST}"
-        echo "digest=${SOURCE_DIGEST}" >> $GITHUB_OUTPUT
-
-        if [ -n "${TARGET_DIGEST}" ] && [ "${SOURCE_DIGEST}" = "${TARGET_DIGEST}" ] ; then
-          echo "跳过 Alpine 镜像同步"
-        else
-          echo "同步 Alpine 镜像到 GHCR"
-          crane copy "${ALPINE_SOURCE}" "${ALPINE_TARGET}"
-        fi
-
   build:
-    needs: ensure-base
     runs-on: ubuntu-latest
 
     strategy:
@@ -141,27 +95,35 @@ jobs:
       run: |
         CADDY_VERSION=$(go list -m -json github.com/caddyserver/caddy/v2@latest | jq -r '.Version')
         PLUGIN_VERSION=$(go list -m -json ${{ matrix.context }}@latest | jq -r '.Version')
-        CURRENT_VERSION="${CADDY_VERSION}-${PLUGIN_VERSION}-${{ needs.ensure-base.outputs.alpine_digest }}"
+        CURRENT_VERSION="${CADDY_VERSION}-${PLUGIN_VERSION}"
         echo "CADDY_VERSION=$CADDY_VERSION" >> $GITHUB_ENV
         echo "PLUGIN_VERSION=$PLUGIN_VERSION" >> $GITHUB_ENV
         echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
 
     - name: Restore build marker
-      id: build-cache
+      id: caddy-cache
       uses: actions/cache/restore@v4
       with:
-        path: .build-cache/${{ matrix.name }}
-        key: caddy-${{ matrix.name }}-${{ env.CURRENT_VERSION }}
+        path: .build-cache/${{ matrix.name }}/caddy
+        key: caddy-${{ matrix.name }}-${{ env.CADDY_VERSION }}
+
+    - name: Restore plugin marker
+      id: plugin-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: .build-cache/${{ matrix.name }}/plugin
+        key: caddy-${{ matrix.name }}-plugin-${{ env.PLUGIN_VERSION }}
 
     - name: Check if build needed
       run: |
         echo "当前版本：${{ env.CURRENT_VERSION }}"
-        echo "缓存命中：${{ steps.build-cache.outputs.cache-hit }}"
+        echo "Caddy 缓存命中：${{ steps.caddy-cache.outputs.cache-hit }}"
+        echo "插件缓存命中：${{ steps.plugin-cache.outputs.cache-hit }}"
 
         if [ "${{ github.event.inputs.force_build }}" = "true" ] ; then
           echo "强制构建"
           echo "should_build=true" >> $GITHUB_ENV
-        elif [ "${{ steps.build-cache.outputs.cache-hit }}" = "true" ] ; then
+        elif [ "${{ steps.caddy-cache.outputs.cache-hit }}" = "true" ] && [ "${{ steps.plugin-cache.outputs.cache-hit }}" = "true" ] ; then
           echo "跳过构建"
           echo "should_build=false" >> $GITHUB_ENV
         else
@@ -229,12 +191,20 @@ jobs:
     - name: Create build marker
       if: env.should_build == 'true'
       run: |
-        mkdir -p .build-cache/${{ matrix.name }}
-        echo "${{ env.CURRENT_VERSION }}" > .build-cache/${{ matrix.name }}/version
+        mkdir -p .build-cache/${{ matrix.name }}/caddy .build-cache/${{ matrix.name }}/plugin
+        echo "${{ env.CADDY_VERSION }}" > .build-cache/${{ matrix.name }}/caddy/version
+        echo "${{ env.PLUGIN_VERSION }}" > .build-cache/${{ matrix.name }}/plugin/version
 
-    - name: Save build marker
-      if: env.should_build == 'true' && steps.build-cache.outputs.cache-hit != 'true'
+    - name: Save Caddy marker
+      if: env.should_build == 'true' && steps.caddy-cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@v4
       with:
-        path: .build-cache/${{ matrix.name }}
-        key: caddy-${{ matrix.name }}-${{ env.CURRENT_VERSION }}
+        path: .build-cache/${{ matrix.name }}/caddy
+        key: caddy-${{ matrix.name }}-${{ env.CADDY_VERSION }}
+
+    - name: Save plugin marker
+      if: env.should_build == 'true' && steps.plugin-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: .build-cache/${{ matrix.name }}/plugin
+        key: caddy-${{ matrix.name }}-plugin-${{ env.PLUGIN_VERSION }}
