@@ -14,6 +14,7 @@ on:
   - cron: "0 17 * * *"
 
 permissions:
+  actions: write
   contents: read
   packages: write
 
@@ -90,16 +91,6 @@ jobs:
       with:
         go-version: 'stable'
 
-    - name: Set VAR_NAME
-      run: echo "VAR_NAME=${{ matrix.name }}_version" >> $GITHUB_ENV
-
-    - name: Import CACHED_VERSION
-      env:
-        GH_TOKEN: ${{ secrets.PAT }}
-      run: |
-        CACHED_VERSION=$(gh variable get ${{ env.VAR_NAME }} -R ${{ github.repository }} 2>/dev/null || echo "none")
-        echo "CACHED_VERSION=$CACHED_VERSION" >> $GITHUB_ENV
-
     - name: Get CURRENT_VERSION
       run: |
         CADDY_VERSION=$(go list -m -json github.com/caddyserver/caddy/v2@latest | jq -r '.Version')
@@ -107,20 +98,27 @@ jobs:
         CURRENT_VERSION="${CADDY_VERSION}-${PLUGIN_VERSION}"
         echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
 
+    - name: Restore build marker
+      id: build-cache
+      uses: actions/cache/restore@v4
+      with:
+        path: .build-cache/${{ matrix.name }}
+        key: caddy-${{ matrix.name }}-${{ env.CURRENT_VERSION }}
+
     - name: Check if build needed
       run: |
         echo "当前版本：${{ env.CURRENT_VERSION }}"
-        echo "缓存版本：${{ env.CACHED_VERSION }}"
+        echo "缓存命中：${{ steps.build-cache.outputs.cache-hit }}"
 
-        if [ "${{ env.CURRENT_VERSION }}" != "${{ env.CACHED_VERSION }}" ] ; then
-          echo "需要构建"
-          echo "should_build=true" >> $GITHUB_ENV
-        elif [ "${{ github.event.inputs.force_build }}" = "true" ] ; then
+        if [ "${{ github.event.inputs.force_build }}" = "true" ] ; then
           echo "强制构建"
           echo "should_build=true" >> $GITHUB_ENV
-        else
+        elif [ "${{ steps.build-cache.outputs.cache-hit }}" = "true" ] ; then
           echo "跳过构建"
           echo "should_build=false" >> $GITHUB_ENV
+        else
+          echo "需要构建"
+          echo "should_build=true" >> $GITHUB_ENV
         fi
 
     - name: Login to Docker Hub
@@ -161,10 +159,15 @@ jobs:
           ghcr.io/blazesnow/caddy:${{ matrix.name }}-alpine
           ghcr.io/blazesnow/caddy:${{ matrix.name }}
 
-    - name: Output CURRENT_VERSION
+    - name: Create build marker
       if: env.should_build == 'true'
-      env:
-        GH_TOKEN: ${{ secrets.PAT }}
       run: |
-        echo "更新变量：${{ env.VAR_NAME }}=${{ env.CURRENT_VERSION }}"
-        gh variable set ${{ env.VAR_NAME }} --body "${{ env.CURRENT_VERSION }}" -R ${{ github.repository }}
+        mkdir -p .build-cache/${{ matrix.name }}
+        echo "${{ env.CURRENT_VERSION }}" > .build-cache/${{ matrix.name }}/version
+
+    - name: Save build marker
+      if: env.should_build == 'true' && steps.build-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: .build-cache/${{ matrix.name }}
+        key: caddy-${{ matrix.name }}-${{ env.CURRENT_VERSION }}
