@@ -1,4 +1,4 @@
-name: Publish Caddy Plugin Alpine Image
+name: Build and Publish Caddy Plugins
 
 on:
   push:
