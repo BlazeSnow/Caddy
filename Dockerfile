@@ -1,5 +1,5 @@
 # 运行镜像
-FROM ghcr.io/blazesnow/alpine:latest
+FROM ghcr.io/blazesnow/alpine:3.22
 
 ARG TARGETOS
 ARG TARGETARCH
