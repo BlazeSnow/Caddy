@@ -96,6 +96,8 @@ jobs:
         CADDY_VERSION=$(go list -m -json github.com/caddyserver/caddy/v2@latest | jq -r '.Version')
         PLUGIN_VERSION=$(go list -m -json ${{ matrix.context }}@latest | jq -r '.Version')
         CURRENT_VERSION="${CADDY_VERSION}-${PLUGIN_VERSION}"
+        echo "CADDY_VERSION=$CADDY_VERSION" >> $GITHUB_ENV
+        echo "PLUGIN_VERSION=$PLUGIN_VERSION" >> $GITHUB_ENV
         echo "CURRENT_VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
 
     - name: Restore build marker
@@ -120,6 +122,27 @@ jobs:
           echo "需要构建"
           echo "should_build=true" >> $GITHUB_ENV
         fi
+
+    - name: Install xcaddy
+      if: env.should_build == 'true'
+      run: go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+
+    - name: Build Caddy binaries
+      if: env.should_build == 'true'
+      env:
+        PLUGIN: ${{ matrix.context }}
+      run: |
+        set -eu
+
+        mkdir -p dist/linux_amd64 dist/linux_arm64
+
+        for arch in amd64 arm64 ; do
+          echo "构建 Caddy ${CADDY_VERSION} + ${PLUGIN}@${PLUGIN_VERSION} for linux/${arch}"
+          CGO_ENABLED=0 GOOS=linux GOARCH=${arch} xcaddy build "${CADDY_VERSION}" \
+            --with "${PLUGIN}@${PLUGIN_VERSION}" \
+            --output "dist/linux_${arch}/caddy"
+          chmod +x "dist/linux_${arch}/caddy"
+        done
 
     - name: Login to Docker Hub
       if: env.should_build == 'true'
@@ -151,8 +174,6 @@ jobs:
         context: .
         push: true
         platforms: linux/amd64,linux/arm64
-        build-args: |
-          PLUGIN=${{ matrix.context }}
         tags: |
           blazesnow/caddy:${{ matrix.name }}-alpine
           blazesnow/caddy:${{ matrix.name }}
