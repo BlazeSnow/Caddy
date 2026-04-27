@@ -1,12 +1,8 @@
-# 构建镜像
-FROM ghcr.io/blazesnow/caddy:builder AS builder
-
-# 开始构建
-ARG PLUGIN
-RUN xcaddy build --with ${PLUGIN} --output /caddy
-
 # 运行镜像
-FROM ghcr.io/blazesnow/alpine:latest
+FROM public.ecr.aws/docker/library/alpine:3.23
+
+ARG TARGETOS
+ARG TARGETARCH
 
 LABEL maintainer="hello@blazesnow.com"
 LABEL repository="https://github.com/BlazeSnow/Caddy"
@@ -17,8 +13,8 @@ RUN mkdir -p /config /data
 # 补齐依赖
 RUN apk add --no-cache ca-certificates libcap mailcap
 
-# 复制可执行文件
-COPY --from=builder /caddy /usr/bin/caddy
+# 复制 CI 中构建好的对应架构可执行文件
+COPY ./dist/${TARGETOS}_${TARGETARCH}/caddy /usr/bin/caddy
 
 # 设置可执行文件权限
 RUN chmod +x /usr/bin/caddy
