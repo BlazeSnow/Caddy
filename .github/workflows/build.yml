@@ -84,7 +84,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: Set up golang
       uses: actions/setup-go@v6
@@ -100,14 +100,14 @@ jobs:
 
     - name: Restore build marker
       id: caddy-cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       with:
         path: .build-cache/${{ matrix.name }}/caddy
         key: caddy-${{ matrix.name }}-${{ env.CADDY_VERSION }}
 
     - name: Restore plugin marker
       id: plugin-cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       with:
         path: .build-cache/${{ matrix.name }}/plugin
         key: caddy-${{ matrix.name }}-plugin-${{ env.PLUGIN_VERSION }}
@@ -176,7 +176,7 @@ jobs:
 
     - name: Build and push
       if: env.should_build == 'true'
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@v7
       with:
         context: .
         push: true
@@ -196,14 +196,14 @@ jobs:
 
     - name: Save Caddy marker
       if: env.should_build == 'true' && steps.caddy-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v5
       with:
         path: .build-cache/${{ matrix.name }}/caddy
         key: caddy-${{ matrix.name }}-${{ env.CADDY_VERSION }}
 
     - name: Save plugin marker
       if: env.should_build == 'true' && steps.plugin-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v5
       with:
         path: .build-cache/${{ matrix.name }}/plugin
         key: caddy-${{ matrix.name }}-plugin-${{ env.PLUGIN_VERSION }}
