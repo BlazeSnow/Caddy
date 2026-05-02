@@ -1,9 +1,6 @@
 name: Build and Publish Caddy Plugins
 
 on:
-  push:
-    branches:
-    - main
   workflow_dispatch:
     inputs:
       force_build:
