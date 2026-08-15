@@ -86,7 +86,7 @@ example.com {
 ### 注意事项
 
 - 配置目录为 `/config`，数据目录为 `/data`（镜像内通过 `XDG_CONFIG_HOME` / `XDG_DATA_HOME` 指定），建议挂载持久化
-- 镜像基于 Alpine，`-alpine` 后缀的 tag 为历史遗留，与不带后缀的内容一致
+- 提供 Alpine 和 Debian 两个基础镜像：`<插件>` / `<插件>-alpine` 基于 Alpine（默认、体积更小），`<插件>-slim` 基于 Debian slim
 - 管理端口 2019 可选开放
 
 ## ACME-DNS

@@ -65,6 +65,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: versions
 
+    env:
+      BASE_ALPINE: public.ecr.aws/docker/library/alpine:3.24
+      BASE_DEBIAN: public.ecr.aws/docker/library/debian:trixie-slim
+
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -162,18 +166,35 @@ jobs:
       if: env.should_build == 'true'
       uses: docker/setup-buildx-action@v4
 
-    - name: Build and push
+    - name: Build and push (Alpine)
       if: env.should_build == 'true'
       uses: docker/build-push-action@v7
       with:
         context: .
+        file: ./Dockerfile
         push: true
         platforms: linux/amd64,linux/arm64
+        build-args: |
+          BASE_IMAGE=${{ env.BASE_ALPINE }}
         tags: |
           blazesnow/caddy:${{ matrix.name }}-alpine
           blazesnow/caddy:${{ matrix.name }}
           ghcr.io/blazesnow/caddy:${{ matrix.name }}-alpine
           ghcr.io/blazesnow/caddy:${{ matrix.name }}
+
+    - name: Build and push (Debian)
+      if: env.should_build == 'true'
+      uses: docker/build-push-action@v7
+      with:
+        context: .
+        file: ./Dockerfile
+        push: true
+        platforms: linux/amd64,linux/arm64
+        build-args: |
+          BASE_IMAGE=${{ env.BASE_DEBIAN }}
+        tags: |
+          blazesnow/caddy:${{ matrix.name }}-slim
+          ghcr.io/blazesnow/caddy:${{ matrix.name }}-slim
 
     - name: Create build marker
       if: env.should_build == 'true'

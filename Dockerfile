@@ -1,5 +1,6 @@
-# 运行镜像
-FROM public.ecr.aws/docker/library/alpine:3.24
+# 运行镜像（默认 Alpine，可用 --build-arg BASE_IMAGE=... 切换基础镜像）
+ARG BASE_IMAGE=public.ecr.aws/docker/library/alpine:3.24
+FROM ${BASE_IMAGE}
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -10,8 +11,12 @@ LABEL repository="https://github.com/BlazeSnow/Caddy"
 # 创建配置和数据目录
 RUN mkdir -p /config /data
 
-# 补齐依赖
-RUN apk add --no-cache ca-certificates libcap mailcap
+# 补齐依赖（按基础镜像的包管理器选择）
+RUN if command -v apk >/dev/null 2>&1; then \
+      apk add --no-cache ca-certificates libcap mailcap; \
+    elif command -v apt-get >/dev/null 2>&1; then \
+      apt-get update && apt-get install -y --no-install-recommends ca-certificates libcap2-bin mailcap && rm -rf /var/lib/apt/lists/*; \
+    fi
 
 # 复制 CI 中构建好的对应架构可执行文件
 COPY ./dist/${TARGETOS}_${TARGETARCH}/caddy /usr/bin/caddy
