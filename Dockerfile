@@ -1,5 +1,5 @@
 # 运行镜像
-FROM public.ecr.aws/docker/library/alpine:3.23
+FROM public.ecr.aws/docker/library/alpine:3.24
 
 ARG TARGETOS
 ARG TARGETARCH
