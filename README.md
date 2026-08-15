@@ -59,6 +59,18 @@ volumes:
 docker compose up -d
 ```
 
+**Caddyfile**（DNS 质询示例，凭据通过环境变量传递）：
+
+```caddy
+example.com {
+    tls {
+        dns cloudflare {env.CF_API_TOKEN}
+    }
+}
+```
+
+各插件的凭据环境变量名和格式因提供商而异，详见下方「ACME-DNS」表格中各链接的使用说明。
+
 - 配置目录为 `/config`，数据目录为 `/data`（镜像内通过 `XDG_CONFIG_HOME` / `XDG_DATA_HOME` 指定），建议挂载持久化
 - 镜像基于 Alpine，`-alpine` 后缀的 tag 为历史遗留，与不带后缀的内容一致
 - 管理端口 2019 可选开放
