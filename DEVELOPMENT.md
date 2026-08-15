@@ -45,7 +45,7 @@
 ### 3. 注意事项
 
 - 所有 job 串行执行（`max-parallel: 1`），主要顾虑是 Docker Hub 推送速率
-- `setup-go` 已关闭内置缓存（`cache: false`），仓库没有 go.mod，内置缓存无法计算 key
+- `setup-go` 已关闭内置缓存（`cache: false`），仓库没有 go.mod，内置缓存无法计算 key；改为在 build job 手动缓存 Go 模块（`~/go/pkg/mod`，key 为 `go-mod-<Caddy版本>`），Caddy 版本不变时 25 个 job 共享一份依赖下载
 
 ### 4. 开发版（beta）镜像
 
