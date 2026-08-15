@@ -1,0 +1,41 @@
+name: Sync README to Docker Hub
+
+on:
+  push:
+    branches:
+    - main
+    - dev
+    paths:
+    - README.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+
+    - name: Sync README to Docker Hub
+      env:
+        DOCKER_USER: blazesnow
+        DOCKER_TOKEN: ${{ secrets.TOKEN }}
+        REPO: ${{ github.ref == 'refs/heads/dev' && 'blazesnow/caddy-beta' || 'blazesnow/caddy' }}
+      run: |
+        set -eu
+
+        TOKEN=$(curl -sf -X POST https://hub.docker.com/v2/users/login/ \
+          -H "Content-Type: application/json" \
+          -d "{\"username\":\"${DOCKER_USER}\",\"password\":\"${DOCKER_TOKEN}\"}" | jq -r '.token')
+
+        README=$(jq -Rs . README.md)
+
+        curl -sf -X PATCH "https://hub.docker.com/v2/repositories/${REPO}/" \
+          -H "Content-Type: application/json" -H "Authorization: JWT ${TOKEN}" \
+          -d "{\"full_description\": ${README}}"
+
+        echo "已同步 README 到 ${REPO}"

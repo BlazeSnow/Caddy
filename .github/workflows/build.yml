@@ -5,8 +5,8 @@ on:
     inputs:
       force_build:
         description: '强制构建所有插件镜像，忽略版本缓存。'
-        required: true
-        default: 'false'
+        type: boolean
+        default: false
   schedule:
   - cron: "0 17 * * *"
 
@@ -19,65 +19,24 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  BASE_ALPINE: public.ecr.aws/docker/library/alpine:3.24
+  BASE_DEBIAN: public.ecr.aws/docker/library/debian:trixie-slim
+  # dev 分支推送构建 beta 镜像，其余触发（定时/手动/发版）构建生产镜像
+  IMAGE_PREFIX: ${{ github.ref == 'refs/heads/dev' && 'blazesnow/caddy-beta' || 'blazesnow/caddy' }}
+  GHCR_IMAGE_PREFIX: ${{ github.ref == 'refs/heads/dev' && 'ghcr.io/blazesnow/caddy-beta' || 'ghcr.io/blazesnow/caddy' }}
+  CACHE_NS: ${{ github.ref == 'refs/heads/dev' && 'beta-' || '' }}
+  # beta 模式（dev 分支手动触发）只构建这些插件，用于快速验证
+  BETA_PLUGINS: cloudflare tencentcloud webdav
+
 jobs:
-  build:
+  versions:
     runs-on: ubuntu-latest
 
-    strategy:
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        include:
-        - name: cloudflare
-          context: github.com/caddy-dns/cloudflare
-        - name: webdav
-          context: github.com/mholt/caddy-webdav
-        - name: tencentcloud
-          context: github.com/caddy-dns/tencentcloud
-        - name: edgeone
-          context: github.com/caddy-dns/edgeone
-        - name: alidns
-          context: github.com/caddy-dns/alidns
-        - name: huaweicloud
-          context: github.com/caddy-dns/huaweicloud
-        - name: azure
-          context: github.com/caddy-dns/azure
-        - name: cloudns
-          context: github.com/caddy-dns/cloudns
-        - name: route53
-          context: github.com/caddy-dns/route53
-        - name: duckdns
-          context: github.com/caddy-dns/duckdns
-        - name: porkbun
-          context: github.com/caddy-dns/porkbun
-        - name: acmedns
-          context: github.com/caddy-dns/acmedns
-        - name: digitalocean
-          context: github.com/caddy-dns/digitalocean
-        - name: hetzner
-          context: github.com/caddy-dns/hetzner
-        - name: ovh
-          context: github.com/caddy-dns/ovh
-        - name: desec
-          context: github.com/caddy-dns/desec
-        - name: ionos
-          context: github.com/caddy-dns/ionos
-        - name: rfc2136
-          context: github.com/caddy-dns/rfc2136
-        - name: powerdns
-          context: github.com/caddy-dns/powerdns
-        - name: netcup
-          context: github.com/caddy-dns/netcup
-        - name: inwx
-          context: github.com/caddy-dns/inwx
-        - name: googleclouddns
-          context: github.com/caddy-dns/googleclouddns
-        - name: gandi
-          context: github.com/caddy-dns/gandi
-        - name: netlify
-          context: github.com/caddy-dns/netlify
-        - name: godaddy
-          context: github.com/caddy-dns/godaddy
+    outputs:
+      caddy: ${{ steps.caddy.outputs.caddy }}
+      matrix: ${{ steps.versions.outputs.matrix }}
+      all_versions: ${{ steps.versions.outputs.all_versions }}
 
     steps:
     - name: Checkout code
@@ -87,76 +46,82 @@ jobs:
       uses: actions/setup-go@v7
       with:
         go-version: 'stable'
+        cache: false
 
-    - name: Get versions
-      run: |
-        CADDY_VERSION=$(go list -m -json github.com/caddyserver/caddy/v2@latest | jq -r '.Version')
-        PLUGIN_VERSION=$(go list -m -json ${{ matrix.context }}@latest | jq -r '.Version')
-        echo "CADDY_VERSION=$CADDY_VERSION" >> $GITHUB_ENV
-        echo "PLUGIN_VERSION=$PLUGIN_VERSION" >> $GITHUB_ENV
+    - name: Get Caddy version
+      id: caddy
+      run: echo "caddy=$(go list -m -json github.com/caddyserver/caddy/v2@latest | jq -r '.Version')" >> "$GITHUB_OUTPUT"
 
-    - name: Restore build marker
-      id: caddy-cache
+    - name: Restore build manifest
+      id: manifest-cache
       uses: actions/cache/restore@v6
       with:
-        path: .build-cache/${{ matrix.name }}/caddy
-        key: caddy-${{ matrix.name }}-${{ env.CADDY_VERSION }}
+        path: .build-cache/manifest.json
+        key: build-manifest-${{ env.CACHE_NS }}${{ steps.caddy.outputs.caddy }}
+        restore-keys: |
+          build-manifest-${{ env.CACHE_NS }}${{ steps.caddy.outputs.caddy }}-
 
-    - name: Restore plugin marker
-      id: plugin-cache
+    - name: Get plugin versions and build matrix
+      id: versions
+      env:
+        FORCE_BUILD: ${{ github.event.inputs.force_build }}
+      run: bash versions.sh
+
+  build:
+    runs-on: ubuntu-latest
+    needs: versions
+    if: needs.versions.outputs.matrix != '[]'
+
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include: ${{ fromJSON(needs.versions.outputs.matrix) }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+
+    - name: Set up golang
+      uses: actions/setup-go@v7
+      with:
+        go-version: 'stable'
+        cache: false
+
+    - name: Set versions
+      run: |
+        echo "CADDY_VERSION=${{ needs.versions.outputs.caddy }}" >> "$GITHUB_ENV"
+        echo "PLUGIN_VERSION=${{ matrix.plugin_version }}" >> "$GITHUB_ENV"
+
+    - name: Restore Go modules cache
+      id: go-mod-cache
       uses: actions/cache/restore@v6
       with:
-        path: .build-cache/${{ matrix.name }}/plugin
-        key: caddy-${{ matrix.name }}-plugin-${{ env.PLUGIN_VERSION }}
-
-    - name: Check if build needed
-      run: |
-        echo "Caddy 版本：${{ env.CADDY_VERSION }}"
-        echo "插件版本：${{ env.PLUGIN_VERSION }}"
-        echo "Caddy 缓存命中：${{ steps.caddy-cache.outputs.cache-hit }}"
-        echo "插件缓存命中：${{ steps.plugin-cache.outputs.cache-hit }}"
-
-        if [ "${{ github.event.inputs.force_build }}" = "true" ] ; then
-          echo "强制构建"
-          echo "should_build=true" >> $GITHUB_ENV
-        elif [ "${{ steps.caddy-cache.outputs.cache-hit }}" = "true" ] && [ "${{ steps.plugin-cache.outputs.cache-hit }}" = "true" ] ; then
-          echo "跳过构建"
-          echo "should_build=false" >> $GITHUB_ENV
-        else
-          echo "需要构建"
-          echo "should_build=true" >> $GITHUB_ENV
-        fi
+        path: ~/go/pkg/mod
+        key: go-mod-${{ env.CADDY_VERSION }}
 
     - name: Install xcaddy
-      if: env.should_build == 'true'
       run: go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 
     - name: Build Caddy binaries
-      if: env.should_build == 'true'
       env:
         PLUGIN: ${{ matrix.context }}
-      run: |
-        set -eu
+      run: bash build-caddy.sh
 
-        mkdir -p dist/linux_amd64 dist/linux_arm64
-
-        for arch in amd64 arm64 ; do
-          echo "构建 Caddy ${CADDY_VERSION} + ${PLUGIN}@${PLUGIN_VERSION} for linux/${arch}"
-          CGO_ENABLED=0 GOOS=linux GOARCH=${arch} xcaddy build "${CADDY_VERSION}" \
-            --with "${PLUGIN}@${PLUGIN_VERSION}" \
-            --output "dist/linux_${arch}/caddy"
-          chmod +x "dist/linux_${arch}/caddy"
-        done
+    - name: Save Go modules cache
+      if: steps.go-mod-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: ~/go/pkg/mod
+        key: go-mod-${{ env.CADDY_VERSION }}
 
     - name: Login to Docker Hub
-      if: env.should_build == 'true'
       uses: docker/login-action@v4.5.2
       with:
         username: blazesnow
         password: ${{ secrets.TOKEN }}
 
     - name: Login to GitHub
-      if: env.should_build == 'true'
       uses: docker/login-action@v4.5.2
       with:
         registry: ghcr.io
@@ -164,43 +129,54 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Set up QEMU
-      if: env.should_build == 'true'
       uses: docker/setup-qemu-action@v4
 
     - name: Set up Docker Buildx
-      if: env.should_build == 'true'
       uses: docker/setup-buildx-action@v4
 
-    - name: Build and push
-      if: env.should_build == 'true'
+    - name: Build and push (Alpine)
       uses: docker/build-push-action@v7
       with:
         context: .
+        file: ./Dockerfile
         push: true
         platforms: linux/amd64,linux/arm64
+        build-args: |
+          BASE_IMAGE=${{ env.BASE_ALPINE }}
         tags: |
-          blazesnow/caddy:${{ matrix.name }}-alpine
-          blazesnow/caddy:${{ matrix.name }}
-          ghcr.io/blazesnow/caddy:${{ matrix.name }}-alpine
-          ghcr.io/blazesnow/caddy:${{ matrix.name }}
+          ${{ env.IMAGE_PREFIX }}:${{ matrix.name }}-alpine
+          ${{ env.IMAGE_PREFIX }}:${{ matrix.name }}
+          ${{ env.GHCR_IMAGE_PREFIX }}:${{ matrix.name }}-alpine
+          ${{ env.GHCR_IMAGE_PREFIX }}:${{ matrix.name }}
 
-    - name: Create build marker
-      if: env.should_build == 'true'
-      run: |
-        mkdir -p .build-cache/${{ matrix.name }}/caddy .build-cache/${{ matrix.name }}/plugin
-        echo "${{ env.CADDY_VERSION }}" > .build-cache/${{ matrix.name }}/caddy/version
-        echo "${{ env.PLUGIN_VERSION }}" > .build-cache/${{ matrix.name }}/plugin/version
+    - name: Build and push (Debian)
+      uses: docker/build-push-action@v7
+      with:
+        context: .
+        file: ./Dockerfile
+        push: true
+        platforms: linux/amd64,linux/arm64
+        build-args: |
+          BASE_IMAGE=${{ env.BASE_DEBIAN }}
+        tags: |
+          ${{ env.IMAGE_PREFIX }}:${{ matrix.name }}-slim
+          ${{ env.GHCR_IMAGE_PREFIX }}:${{ matrix.name }}-slim
 
-    - name: Save Caddy marker
-      if: env.should_build == 'true' && steps.caddy-cache.outputs.cache-hit != 'true'
+  finalize:
+    runs-on: ubuntu-latest
+    needs: [versions, build]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+
+    - name: Write build manifest
+      env:
+        ALL_VERSIONS: ${{ needs.versions.outputs.all_versions }}
+      run: bash write-manifest.sh
+
+    - name: Save build manifest
       uses: actions/cache/save@v6
       with:
-        path: .build-cache/${{ matrix.name }}/caddy
-        key: caddy-${{ matrix.name }}-${{ env.CADDY_VERSION }}
-
-    - name: Save plugin marker
-      if: env.should_build == 'true' && steps.plugin-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v6
-      with:
-        path: .build-cache/${{ matrix.name }}/plugin
-        key: caddy-${{ matrix.name }}-plugin-${{ env.PLUGIN_VERSION }}
+        path: .build-cache/manifest.json
+        key: build-manifest-${{ env.CACHE_NS }}${{ needs.versions.outputs.caddy }}-${{ github.run_id }}
