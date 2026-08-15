@@ -12,14 +12,46 @@
 
 每个插件对应一个独立镜像 tag，以 Cloudflare DNS 插件为例：
 
+**docker run：**
+
 ```bash
 docker run -d \
   --name caddy \
-  -p 80:80 -p 443:443 \
+  -p 80:80 \
+  -p 443:443 \
+  -p 443:443/udp \
   -v /path/to/Caddyfile:/etc/caddy/Caddyfile \
   -v caddy_data:/data \
   -v caddy_config:/config \
   blazesnow/caddy:cloudflare
+```
+
+**docker compose**（`docker-compose.yml`）：
+
+```yaml
+services:
+  caddy:
+    image: blazesnow/caddy:cloudflare
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
+```
+
+在 compose 文件所在目录运行：
+
+```bash
+docker compose up -d
 ```
 
 - 配置目录为 `/config`，数据目录为 `/data`（镜像内通过 `XDG_CONFIG_HOME` / `XDG_DATA_HOME` 指定），建议挂载持久化
