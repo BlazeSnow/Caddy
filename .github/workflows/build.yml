@@ -24,8 +24,9 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      caddy: ${{ steps.versions.outputs.caddy }}
+      caddy: ${{ steps.caddy.outputs.caddy }}
       matrix: ${{ steps.versions.outputs.matrix }}
+      all_versions: ${{ steps.versions.outputs.all_versions }}
 
     steps:
     - name: Checkout code
@@ -37,7 +38,20 @@ jobs:
         go-version: 'stable'
         cache: false
 
-    - name: Get versions and build matrix
+    - name: Get Caddy version
+      id: caddy
+      run: echo "caddy=$(go list -m -json github.com/caddyserver/caddy/v2@latest | jq -r '.Version')" >> "$GITHUB_OUTPUT"
+
+    - name: Restore build manifest
+      id: manifest-cache
+      uses: actions/cache/restore@v6
+      with:
+        path: .build-cache/manifest.json
+        key: build-manifest-${{ steps.caddy.outputs.caddy }}
+        restore-keys: |
+          build-manifest-${{ steps.caddy.outputs.caddy }}-
+
+    - name: Get plugin versions and build matrix
       id: versions
       run: |
         set -eu
@@ -47,23 +61,41 @@ jobs:
           exit 1
         }
 
-        CADDY_VERSION=$(go list -m -json github.com/caddyserver/caddy/v2@latest | jq -r '.Version')
-        echo "caddy=$CADDY_VERSION" >> "$GITHUB_OUTPUT"
+        FORCE="false"
+        if [ "${{ github.event.inputs.force_build }}" = "true" ]; then
+          FORCE="true"
+        fi
+
+        MANIFEST="{}"
+        if [ -f .build-cache/manifest.json ]; then
+          MANIFEST=$(cat .build-cache/manifest.json)
+        fi
 
         MATRIX='[]'
+        ALL='{}'
         while IFS= read -r entry; do
           name=$(jq -r '.name' <<< "$entry")
           context=$(jq -r '.context' <<< "$entry")
           plugin_version=$(go list -m -json "${context}@latest" | jq -r '.Version')
-          MATRIX=$(printf '%s' "$MATRIX" | jq -c \
-            --arg name "$name" --arg context "$context" --arg plugin_version "$plugin_version" \
-            '. + [{name: $name, context: $context, plugin_version: $plugin_version}]')
+
+          ALL=$(printf '%s' "$ALL" | jq -c --arg name "$name" --arg plugin_version "$plugin_version" \
+            '. + {($name): $plugin_version}')
+
+          last_built=$(printf '%s' "$MANIFEST" | jq -r --arg name "$name" '.[$name] // "none"')
+          if [ "$FORCE" = "true" ] || [ "$last_built" != "$plugin_version" ]; then
+            MATRIX=$(printf '%s' "$MATRIX" | jq -c \
+              --arg name "$name" --arg context "$context" --arg plugin_version "$plugin_version" \
+              '. + [{name: $name, context: $context, plugin_version: $plugin_version}]')
+          fi
         done < <(jq -c '.[]' plugins.json)
+
         echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+        echo "all_versions=$ALL" >> "$GITHUB_OUTPUT"
 
   build:
     runs-on: ubuntu-latest
     needs: versions
+    if: needs.versions.outputs.matrix != '[]'
 
     env:
       BASE_ALPINE: public.ecr.aws/docker/library/alpine:3.24
@@ -90,44 +122,10 @@ jobs:
         echo "CADDY_VERSION=${{ needs.versions.outputs.caddy }}" >> "$GITHUB_ENV"
         echo "PLUGIN_VERSION=${{ matrix.plugin_version }}" >> "$GITHUB_ENV"
 
-    - name: Restore build marker
-      id: caddy-cache
-      uses: actions/cache/restore@v6
-      with:
-        path: .build-cache/${{ matrix.name }}/caddy
-        key: caddy-${{ matrix.name }}-${{ env.CADDY_VERSION }}
-
-    - name: Restore plugin marker
-      id: plugin-cache
-      uses: actions/cache/restore@v6
-      with:
-        path: .build-cache/${{ matrix.name }}/plugin
-        key: caddy-${{ matrix.name }}-plugin-${{ env.PLUGIN_VERSION }}
-
-    - name: Check if build needed
-      run: |
-        echo "Caddy 版本：${{ env.CADDY_VERSION }}"
-        echo "插件版本：${{ env.PLUGIN_VERSION }}"
-        echo "Caddy 缓存命中：${{ steps.caddy-cache.outputs.cache-hit }}"
-        echo "插件缓存命中：${{ steps.plugin-cache.outputs.cache-hit }}"
-
-        if [ "${{ github.event.inputs.force_build }}" = "true" ] ; then
-          echo "强制构建"
-          echo "should_build=true" >> $GITHUB_ENV
-        elif [ "${{ steps.caddy-cache.outputs.cache-hit }}" = "true" ] && [ "${{ steps.plugin-cache.outputs.cache-hit }}" = "true" ] ; then
-          echo "跳过构建"
-          echo "should_build=false" >> $GITHUB_ENV
-        else
-          echo "需要构建"
-          echo "should_build=true" >> $GITHUB_ENV
-        fi
-
     - name: Install xcaddy
-      if: env.should_build == 'true'
       run: go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
 
     - name: Build Caddy binaries
-      if: env.should_build == 'true'
       env:
         PLUGIN: ${{ matrix.context }}
       run: |
@@ -144,14 +142,12 @@ jobs:
         done
 
     - name: Login to Docker Hub
-      if: env.should_build == 'true'
       uses: docker/login-action@v4.5.2
       with:
         username: blazesnow
         password: ${{ secrets.TOKEN }}
 
     - name: Login to GitHub
-      if: env.should_build == 'true'
       uses: docker/login-action@v4.5.2
       with:
         registry: ghcr.io
@@ -159,15 +155,12 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Set up QEMU
-      if: env.should_build == 'true'
       uses: docker/setup-qemu-action@v4
 
     - name: Set up Docker Buildx
-      if: env.should_build == 'true'
       uses: docker/setup-buildx-action@v4
 
     - name: Build and push (Alpine)
-      if: env.should_build == 'true'
       uses: docker/build-push-action@v7
       with:
         context: .
@@ -183,7 +176,6 @@ jobs:
           ghcr.io/blazesnow/caddy:${{ matrix.name }}
 
     - name: Build and push (Debian)
-      if: env.should_build == 'true'
       uses: docker/build-push-action@v7
       with:
         context: .
@@ -196,23 +188,18 @@ jobs:
           blazesnow/caddy:${{ matrix.name }}-slim
           ghcr.io/blazesnow/caddy:${{ matrix.name }}-slim
 
-    - name: Create build marker
-      if: env.should_build == 'true'
+  finalize:
+    runs-on: ubuntu-latest
+    needs: [versions, build]
+
+    steps:
+    - name: Write build manifest
       run: |
-        mkdir -p .build-cache/${{ matrix.name }}/caddy .build-cache/${{ matrix.name }}/plugin
-        echo "${{ env.CADDY_VERSION }}" > .build-cache/${{ matrix.name }}/caddy/version
-        echo "${{ env.PLUGIN_VERSION }}" > .build-cache/${{ matrix.name }}/plugin/version
+        mkdir -p .build-cache
+        echo '${{ needs.versions.outputs.all_versions }}' > .build-cache/manifest.json
 
-    - name: Save Caddy marker
-      if: env.should_build == 'true' && steps.caddy-cache.outputs.cache-hit != 'true'
+    - name: Save build manifest
       uses: actions/cache/save@v6
       with:
-        path: .build-cache/${{ matrix.name }}/caddy
-        key: caddy-${{ matrix.name }}-${{ env.CADDY_VERSION }}
-
-    - name: Save plugin marker
-      if: env.should_build == 'true' && steps.plugin-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v6
-      with:
-        path: .build-cache/${{ matrix.name }}/plugin
-        key: caddy-${{ matrix.name }}-plugin-${{ env.PLUGIN_VERSION }}
+        path: .build-cache/manifest.json
+        key: build-manifest-${{ needs.versions.outputs.caddy }}-${{ github.run_id }}
