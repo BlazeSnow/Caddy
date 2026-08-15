@@ -4,7 +4,7 @@ FROM public.ecr.aws/docker/library/alpine:3.23
 ARG TARGETOS
 ARG TARGETARCH
 
-LABEL maintainer="hello@blazesnow.com"
+LABEL maintainer="git@blazesnow.org"
 LABEL repository="https://github.com/BlazeSnow/Caddy"
 
 # 创建配置和数据目录
