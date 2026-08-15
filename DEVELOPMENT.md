@@ -10,8 +10,11 @@
 │   ├── build.yml       # 主构建流水线：查询版本 → 编译 → 推送镜像
 │   └── version.yml     # Release 工作流：推送 v* tag 时自动创建 Release
 ├── plugins.json        # 插件清单（唯一数据源，构建矩阵由此生成）
+├── versions.sh         # 版本检查 + 构建矩阵生成（versions job 的逻辑）
+├── build-caddy.sh      # xcaddy 编译 amd64/arm64 二进制
+├── write-manifest.sh   # 写入构建清单（finalize job）
 ├── tag.ps1             # 本地打 tag 脚本（推送 tag 触发 Release）
-├── Dockerfile          # 运行镜像（alpine），编译产物由 CI 注入
+├── Dockerfile          # 运行镜像（Alpine/Debian 双基础镜像），编译产物由 CI 注入
 ├── Caddyfile           # 默认配置（占位）
 ├── CHANGELOG.md        # 版本更新日志
 └── README.md           # 面向使用者的说明
@@ -87,25 +90,21 @@
 不依赖 GitHub 就能验证大部分逻辑：
 
 ```bash
-# YAML 语法（需要 python + pyyaml）
-python -c "import yaml; yaml.safe_load(open('.github/workflows/build.yml', encoding='utf-8'))"
+# bash 语法
+bash -n versions.sh build-caddy.sh write-manifest.sh
 
 # JSON 格式化 + 校验
 jq . plugins.json
 
-# bash 语法（先提取 workflow 中的 run 块，再检查）
-python - <<'EOF'
-import yaml
-data = yaml.safe_load(open('.github/workflows/build.yml', encoding='utf-8'))
-for step in data['jobs']['versions']['steps']:
-    if 'Get versions' in step.get('name', ''):
-        open('/tmp/versions.sh', 'w', encoding='utf-8').write(step['run'])
-EOF
-bash -n /tmp/versions.sh
-
-# 模拟 versions job 的矩阵生成（用假的 go list 代替真实查询）
+# 模拟 versions.sh（用假的 go list / curl 代替真实查询）
 go() { echo '{"Version":"v1.2.3"}'; }
-# 然后运行 workflow 中 versions 步骤的脚本，检查输出的 matrix 是否完整
+curl() { cat /tmp/fake_tag.json; }
+export GITHUB_OUTPUT=/tmp/out.txt GITHUB_REF=refs/heads/dev
+export BASE_ALPINE=public.ecr.aws/docker/library/alpine:3.24
+export BASE_DEBIAN=public.ecr.aws/docker/library/debian:trixie-slim
+export BETA_PLUGINS="cloudflare tencentcloud webdav"
+bash versions.sh
+# 检查 /tmp/out.txt 中的 matrix 是否只包含需要构建的插件
 ```
 
 ## 环境要求
