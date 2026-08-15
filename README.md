@@ -25,6 +25,7 @@ docker run -d \
   -p 80:80 \
   -p 443:443 \
   -p 443:443/udp \
+  -e CF_API_TOKEN=your_api_token \
   -v /path/to/Caddyfile:/etc/caddy/Caddyfile \
   -v caddy_data:/data \
   -v caddy_config:/config \
@@ -43,6 +44,8 @@ services:
       - "80:80"
       - "443:443"
       - "443:443/udp"
+    environment:
+      - CF_API_TOKEN=your_api_token
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
