@@ -17,7 +17,10 @@ Caddy 默认通过 HTTP-01 质询验证域名，要求 CA（如 Let's Encrypt）
 
 ## 使用
 
-每个插件对应一个独立镜像 tag，以 Cloudflare DNS 插件为例：
+每个插件对应一个独立镜像 tag，以 Cloudflare DNS 插件为例。
+
+> [!TIP]
+> `docker run` 与 `docker compose` 二选一即可，效果相同。
 
 ### docker run
 
