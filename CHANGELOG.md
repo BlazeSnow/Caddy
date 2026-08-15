@@ -3,6 +3,7 @@
 ## v1.4.3
 
 - 升级基础镜像到 Alpine 3.24
+- 新增 Debian slim 基础镜像变体（`<插件>-slim` tag）
 
 ## v1.4.2
 
