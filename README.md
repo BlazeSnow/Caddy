@@ -6,9 +6,11 @@
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/BlazeSnow/Caddy/build.yml?style=for-the-badge)
 ![GitHub License](https://img.shields.io/github/license/BlazeSnow/Caddy?style=for-the-badge)
 
+## 简介
+
 镜像名称见：<https://hub.docker.com/r/blazesnow/caddy/tags>
 
-**什么情况需要本镜像？** Caddy 默认通过 HTTP-01 质询验证域名，要求 CA（如 Let's Encrypt）能从公网直接访问你的 80 端口。
+Caddy 默认通过 HTTP-01 质询验证域名，要求 CA（如 Let's Encrypt）能从公网直接访问你的 80 端口。
 
 - 站点**未套 CDN**（80 端口可直达）：官方 Caddy 镜像即可完成自动 HTTPS，无需使用本镜像
 - 站点**套了 CDN**（如腾讯 EdgeOne）：CDN 代理了 80/443 端口，CA 的质询请求穿不透到你的服务器，官方镜像无法完成证书验证。此时应使用本镜像——已集成各主流 DNS 提供商的插件，通过 **DNS-01 质询**（修改 DNS TXT 记录）验证域名，不依赖任何入站端口，选用对应 DNS 提供商的 tag 即可
@@ -17,7 +19,7 @@
 
 每个插件对应一个独立镜像 tag，以 Cloudflare DNS 插件为例：
 
-**docker run：**
+### docker run
 
 ```bash
 docker run -d \
@@ -32,7 +34,9 @@ docker run -d \
   blazesnow/caddy:cloudflare
 ```
 
-**docker compose**（`docker-compose.yml`）：
+### docker compose
+
+`docker-compose.yml`：
 
 ```yaml
 services:
@@ -62,7 +66,9 @@ volumes:
 docker compose up -d
 ```
 
-**Caddyfile**（DNS 质询示例，凭据通过环境变量传递）：
+### Caddyfile
+
+DNS 质询示例，凭据通过环境变量传递：
 
 ```caddy
 example.com {
@@ -72,7 +78,9 @@ example.com {
 }
 ```
 
-各插件的凭据环境变量名和格式因提供商而异，详见下方「ACME-DNS」表格中各链接的使用说明。
+各插件的凭据环境变量名和格式因提供商而异，详见下方 [ACME-DNS](#acme-dns) 章节中的表格。
+
+### 注意事项
 
 - 配置目录为 `/config`，数据目录为 `/data`（镜像内通过 `XDG_CONFIG_HOME` / `XDG_DATA_HOME` 指定），建议挂载持久化
 - 镜像基于 Alpine，`-alpine` 后缀的 tag 为历史遗留，与不带后缀的内容一致
@@ -87,6 +95,8 @@ example.com {
 > 此质询不需要任何开放端口，请求证书的服务器也无需可从外部访问。但是，DNS 质询需要配置。Caddy 需要知道访问您域名的 DNS 提供商的凭据，以便设置（和清除）特殊 TXT 记录。如果启用了 DNS 质询，则默认情况下会禁用其他质询。
 >
 > 由于 ACME CA 在查找 TXT 记录进行质询验证时遵循 DNS 标准，因此您可以使用 CNAME 记录将质询的应答委托给其他 DNS 区域。这可用于将 _acme-challenge 子域委托给另一个区域。如果您的 DNS 提供商不提供 API，或者 Caddy 的某个 DNS 插件不支持该 API，则此功能尤其有用。
+
+### 支持的提供商
 
 本项目目前支持的提供商，各提供商使用说明见附链接：
 
