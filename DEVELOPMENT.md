@@ -51,7 +51,7 @@
 ### 3. build job —— 动态矩阵构建
 
 - `matrix.include` 用 `fromJSON(needs.versions.outputs.matrix)` 动态生成，每个插件一个 job，并 `needs: [versions, base]`，保证基础镜像就绪
-- **跳过判断**：每个 job 先用两个标记文件命中 `actions/cache`（key 分别是 `caddy-<插件>-<Caddy版本>` 和 `caddy-<插件>-plugin-<插件版本>`）。两个缓存都命中且非强制构建时直接跳过，避免版本没变就重复编译
+- **跳过判断**：在 `versions` job 由 `versions.sh` 完成——插件版本、基础镜像指纹都没变的插件不会进入 matrix，build job 只有在 matrix 非空时才会运行（`if: needs.versions.outputs.matrix != '[]'`），避免版本没变就重复编译
 - **编译**：`xcaddy build` 产出 `linux/amd64`、`linux/arm64` 两个二进制（CGO 关闭）
 - **推送**：Docker Buildx 多架构构建，`Dockerfile` 从 `ghcr.io/blazesnow/caddy-base` 继承、仅注入二进制（`COPY --chmod`，无 RUN 层），推送到 Docker Hub（`blazesnow/caddy`）和 GHCR（`ghcr.io/blazesnow/caddy`），每个插件打 `<插件>-alpine` 和 `<插件>` 两个 tag
 - 构建完成后写回标记文件（`echo 版本号 > .build-cache/...`），供下次跳过判断使用
@@ -60,6 +60,7 @@
 
 - 所有 job 串行执行（`max-parallel: 1`），主要顾虑是 Docker Hub 推送速率
 - `setup-go` 已关闭内置缓存（`cache: false`），仓库没有 go.mod，内置缓存无法计算 key；改为在 build job 手动缓存 Go 模块（`~/go/pkg/mod`，key 为 `go-mod-<Caddy版本>`），Caddy 版本不变时 25 个 job 共享一份依赖下载
+- 同时在 build job 缓存 Go 编译缓存（`~/.cache/go-build`，key 为 `go-build-<Caddy版本>-<Go版本>`，Go 版本由 `go env GOVERSION` 运行时解析）。编译缓存内容寻址、与插件无关，Caddy 核心代码的编译产物在 25 个 job 间复用，全量重建（如 Caddy 升级）时只有第一个 job 全量编译，其余 job 只需编译各自插件包；Go 工具链升级会自动换 key 触发重编，不会用上过期的缓存
 - 基础镜像只推 GHCR，插件镜像推 Docker Hub 时首次会带上基础镜像的层，同一 registry 内按 digest 去重，之后不会重复上传
 - 上游基础镜像 tag 升级时，记得同步更新 `BASE_ALPINE` / `BASE_DEBIAN` 以及 `BASE_TAG_ALPINE` / `BASE_TAG_DEBIAN` 四处的版本号（base job 会检测到 digest 变化并重建）
 
