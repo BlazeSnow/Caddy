@@ -48,6 +48,7 @@
 
 - **在 Actions 页面手动触发工作流并选择 dev 分支**时，镜像推送到 `blazesnow/caddy-beta`（GHCR 为 `ghcr.io/blazesnow/caddy-beta`），tag 结构与生产一致；**其余触发**（定时、main 分支手动）构建生产镜像 `blazesnow/caddy`
 - 镜像前缀由 workflow 级 env 的 `IMAGE_PREFIX` / `GHCR_IMAGE_PREFIX` 控制（按 `github.ref` 判断），beta 与生产的 **manifest 缓存相互独立**（`CACHE_NS`），互不影响跳过判断
+- beta 模式**只考虑 `BETA_PLUGINS` 指定的少量插件**（默认 cloudflare / tencentcloud / webdav，可自行修改），与生产一样参与 manifest 跳过判断（版本或基础镜像指纹未变则跳过），需要强制重建时勾选 `force_build`
 - 开发版用于测试 dev 分支上的构建流水线和插件改动，不产生 GitHub Release；发版仍走 main 分支 + `tag.ps1` 流程
 
 ## 添加 / 修改插件

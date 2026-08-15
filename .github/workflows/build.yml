@@ -26,6 +26,8 @@ env:
   IMAGE_PREFIX: ${{ github.ref == 'refs/heads/dev' && 'blazesnow/caddy-beta' || 'blazesnow/caddy' }}
   GHCR_IMAGE_PREFIX: ${{ github.ref == 'refs/heads/dev' && 'ghcr.io/blazesnow/caddy-beta' || 'ghcr.io/blazesnow/caddy' }}
   CACHE_NS: ${{ github.ref == 'refs/heads/dev' && 'beta-' || '' }}
+  # beta 模式（dev 分支手动触发）只构建这些插件，用于快速验证
+  BETA_PLUGINS: cloudflare tencentcloud webdav
 
 jobs:
   versions:
@@ -89,6 +91,18 @@ jobs:
           BASE_CHANGED="true"
         fi
 
+        BETA_MODE="false"
+        if [ "${{ github.ref }}" = "refs/heads/dev" ]; then
+          BETA_MODE="true"
+          echo "beta 模式：仅构建 $BETA_PLUGINS"
+        fi
+
+        if [ "$BETA_MODE" = "true" ]; then
+          SELECTED=$(jq -c --arg list "$BETA_PLUGINS" '[.[] | select(. as $p | ($list | split(" ") | index($p.name)) != null)] | .[]' plugins.json)
+        else
+          SELECTED=$(jq -c '.[]' plugins.json)
+        fi
+
         MATRIX='[]'
         ALL='{}'
         while IFS= read -r entry; do
@@ -105,7 +119,7 @@ jobs:
               --arg name "$name" --arg context "$context" --arg plugin_version "$plugin_version" \
               '. + [{name: $name, context: $context, plugin_version: $plugin_version}]')
           fi
-        done < <(jq -c '.[]' plugins.json)
+        done <<< "$SELECTED"
 
         ALL=$(printf '%s' "$ALL" | jq -c --arg base_alpine "$ALPINE_FP" --arg base_debian "$DEBIAN_FP" \
           '. + {base_alpine: $base_alpine, base_debian: $base_debian}')
