@@ -7,14 +7,15 @@
 ```
 .
 ├── .github/workflows/
-│   ├── build.yml       # 主构建流水线：查询版本 → 编译 → 推送镜像
+│   ├── build.yml       # 主构建流水线：查询版本 → 基础镜像 → 编译 → 推送镜像
 │   └── version.yml     # Release 工作流：推送 v* tag 时自动创建 Release
 ├── plugins.json        # 插件清单（唯一数据源，构建矩阵由此生成）
 ├── versions.sh         # 版本检查 + 构建矩阵生成（versions job 的逻辑）
 ├── build-caddy.sh      # xcaddy 编译 amd64/arm64 二进制
 ├── write-manifest.sh   # 写入构建清单（finalize job）
 ├── tag.ps1             # 本地打 tag 脚本（推送 tag 触发 Release）
-├── Dockerfile          # 运行镜像（Alpine/Debian 双基础镜像），编译产物由 CI 注入
+├── Dockerfile          # 运行镜像：仅注入对应架构二进制，静态层来自 Dockerfile.base
+├── Dockerfile.base     # 静态基础镜像：依赖 + Caddyfile + 环境变量 + 启动命令
 ├── Caddyfile           # 默认配置（占位）
 ├── CHANGELOG.md        # 版本更新日志
 └── README.md           # 面向使用者的说明
@@ -28,29 +29,45 @@
 
 - checkout 后读取根目录 `plugins.json`，先做一次合法性校验（必须是非空数组）
 - 用 `go list -m ...@latest` 查询 Caddy 和每个插件的最新版本
-- 输出两个值：
+- 输出三个值：
   - `caddy`：Caddy 版本号
   - `matrix`：JSON 数组，每个元素是 `{name, context, plugin_version}`，作为下游矩阵
+  - `base_changed`：上游基础镜像（Alpine/Debian）digest 是否与上次构建时不同（`true`/`false`）
 
 插件版本查询全部集中在这里，矩阵 job 不再单独查版本。任一插件查询失败会立刻让整个工作流失败，方便尽早发现问题。
 
-### 2. build job —— 动态矩阵构建
+### 2. base job —— 静态基础镜像
 
-- `matrix.include` 用 `fromJSON(needs.versions.outputs.matrix)` 动态生成，每个插件一个 job
+每次运行都会执行（步骤很轻，只有 checkout + 登录 + 检查），但**只在必要时真正构建**：
+
+- 检查逻辑（`Check if base image needs rebuild`）：
+  - `versions` job 输出的 `base_changed` 为 `true`（上游基础镜像有更新）
+  - 手动触发时勾选了 `force_build`
+  - `docker manifest inspect` 发现 GHCR 上对应 tag 缺失（首次运行或镜像被删时的自愈）
+  - 以上任一成立就重建，否则跳过后续构建步骤
+- **构建**：用 `Dockerfile.base` 多架构（amd64/arm64）构建 `ghcr.io/blazesnow/caddy-base:alpine-3.24` 和 `:debian-trixie-slim` 两个静态镜像（仅推 GHCR，不推 Docker Hub），内容是依赖、Caddyfile、环境变量和启动命令等固定层
+- 静态层构建一次后，上游基础镜像不变时不会再重复执行 `apk`/`apt-get`（含 arm64 的 QEMU 模拟），这是与之前每个插件各自装依赖的最大区别
+
+### 3. build job —— 动态矩阵构建
+
+- `matrix.include` 用 `fromJSON(needs.versions.outputs.matrix)` 动态生成，每个插件一个 job，并 `needs: [versions, base]`，保证基础镜像就绪
 - **跳过判断**：每个 job 先用两个标记文件命中 `actions/cache`（key 分别是 `caddy-<插件>-<Caddy版本>` 和 `caddy-<插件>-plugin-<插件版本>`）。两个缓存都命中且非强制构建时直接跳过，避免版本没变就重复编译
 - **编译**：`xcaddy build` 产出 `linux/amd64`、`linux/arm64` 两个二进制（CGO 关闭）
-- **推送**：Docker Buildx 多架构构建，推送到 Docker Hub（`blazesnow/caddy`）和 GHCR（`ghcr.io/blazesnow/caddy`），每个插件打 `<插件>-alpine` 和 `<插件>` 两个 tag
+- **推送**：Docker Buildx 多架构构建，`Dockerfile` 从 `ghcr.io/blazesnow/caddy-base` 继承、仅注入二进制（`COPY --chmod`，无 RUN 层），推送到 Docker Hub（`blazesnow/caddy`）和 GHCR（`ghcr.io/blazesnow/caddy`），每个插件打 `<插件>-alpine` 和 `<插件>` 两个 tag
 - 构建完成后写回标记文件（`echo 版本号 > .build-cache/...`），供下次跳过判断使用
 
-### 3. 注意事项
+### 4. 注意事项
 
 - 所有 job 串行执行（`max-parallel: 1`），主要顾虑是 Docker Hub 推送速率
 - `setup-go` 已关闭内置缓存（`cache: false`），仓库没有 go.mod，内置缓存无法计算 key；改为在 build job 手动缓存 Go 模块（`~/go/pkg/mod`，key 为 `go-mod-<Caddy版本>`），Caddy 版本不变时 25 个 job 共享一份依赖下载
+- 基础镜像只推 GHCR，插件镜像推 Docker Hub 时首次会带上基础镜像的层，同一 registry 内按 digest 去重，之后不会重复上传
+- 上游基础镜像 tag 升级时，记得同步更新 `BASE_ALPINE` / `BASE_DEBIAN` 以及 `BASE_TAG_ALPINE` / `BASE_TAG_DEBIAN` 四处的版本号（base job 会检测到 digest 变化并重建）
 
-### 4. 开发版（beta）镜像
+### 5. 开发版（beta）镜像
 
 - **在 Actions 页面手动触发工作流并选择 dev 分支**时，镜像推送到 `blazesnow/caddy-beta`（GHCR 为 `ghcr.io/blazesnow/caddy-beta`），tag 结构与生产一致；**其余触发**（定时、main 分支手动）构建生产镜像 `blazesnow/caddy`
 - 镜像前缀由 workflow 级 env 的 `IMAGE_PREFIX` / `GHCR_IMAGE_PREFIX` 控制（按 `github.ref` 判断），beta 与生产的 **manifest 缓存相互独立**（`CACHE_NS`），互不影响跳过判断
+- 基础镜像同样按分支隔离：beta 模式的 base tag 带 `-beta` 后缀（`BASE_TAG_SUFFIX`），不会覆盖生产基础镜像
 - beta 模式**只考虑 `BETA_PLUGINS` 指定的少量插件**（默认 cloudflare / tencentcloud / webdav，可自行修改），与生产一样参与 manifest 跳过判断（版本或基础镜像指纹未变则跳过），需要强制重建时勾选 `force_build`
 - 开发版用于测试 dev 分支上的构建流水线和插件改动，不产生 GitHub Release；发版仍走 main 分支 + `tag.ps1` 流程
 
@@ -97,8 +114,10 @@ bash -n versions.sh build-caddy.sh write-manifest.sh
 jq . plugins.json
 
 # 模拟 versions.sh（用假的 go list / curl 代替真实查询）
+# 注意：脚本在子进程运行，假函数需 export -f 才可见
 go() { echo '{"Version":"v1.2.3"}'; }
 curl() { cat /tmp/fake_tag.json; }
+export -f go curl
 export GITHUB_OUTPUT=/tmp/out.txt GITHUB_REF=refs/heads/dev
 export BASE_ALPINE=public.ecr.aws/docker/library/alpine:3.24
 export BASE_DEBIAN=public.ecr.aws/docker/library/debian:trixie-slim

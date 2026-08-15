@@ -1,5 +1,5 @@
 #!/bin/bash
-# versions.sh：查询插件版本，结合构建清单判断哪些插件需要构建，输出 matrix / all_versions
+# versions.sh：查询插件版本，结合构建清单判断哪些插件需要构建，输出 matrix / all_versions / base_changed
 #
 # 依赖环境变量：
 #   GITHUB_OUTPUT   输出写入目标（GitHub Actions 自动提供）
@@ -70,3 +70,4 @@ ALL=$(printf '%s' "$ALL" | jq -c --arg base_alpine "$ALPINE_FP" --arg base_debia
 
 echo "matrix=$MATRIX" >>"$GITHUB_OUTPUT"
 echo "all_versions=$ALL" >>"$GITHUB_OUTPUT"
+echo "base_changed=$BASE_CHANGED" >>"$GITHUB_OUTPUT"
