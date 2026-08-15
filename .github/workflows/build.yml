@@ -167,6 +167,9 @@ jobs:
     needs: [versions, build]
 
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+
     - name: Write build manifest
       env:
         ALL_VERSIONS: ${{ needs.versions.outputs.all_versions }}
