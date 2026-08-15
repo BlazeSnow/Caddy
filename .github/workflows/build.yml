@@ -20,64 +20,76 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  versions:
+    runs-on: ubuntu-latest
+
+    outputs:
+      caddy: ${{ steps.versions.outputs.caddy }}
+      matrix: ${{ steps.versions.outputs.matrix }}
+
+    steps:
+    - name: Set up golang
+      uses: actions/setup-go@v7
+      with:
+        go-version: 'stable'
+        cache: false
+
+    - name: Get versions and build matrix
+      id: versions
+      run: |
+        set -eu
+
+        PLUGINS=(
+          "cloudflare github.com/caddy-dns/cloudflare"
+          "webdav github.com/mholt/caddy-webdav"
+          "tencentcloud github.com/caddy-dns/tencentcloud"
+          "edgeone github.com/caddy-dns/edgeone"
+          "alidns github.com/caddy-dns/alidns"
+          "huaweicloud github.com/caddy-dns/huaweicloud"
+          "azure github.com/caddy-dns/azure"
+          "cloudns github.com/caddy-dns/cloudns"
+          "route53 github.com/caddy-dns/route53"
+          "duckdns github.com/caddy-dns/duckdns"
+          "porkbun github.com/caddy-dns/porkbun"
+          "acmedns github.com/caddy-dns/acmedns"
+          "digitalocean github.com/caddy-dns/digitalocean"
+          "hetzner github.com/caddy-dns/hetzner"
+          "ovh github.com/caddy-dns/ovh"
+          "desec github.com/caddy-dns/desec"
+          "ionos github.com/caddy-dns/ionos"
+          "rfc2136 github.com/caddy-dns/rfc2136"
+          "powerdns github.com/caddy-dns/powerdns"
+          "netcup github.com/caddy-dns/netcup"
+          "inwx github.com/caddy-dns/inwx"
+          "googleclouddns github.com/caddy-dns/googleclouddns"
+          "gandi github.com/caddy-dns/gandi"
+          "netlify github.com/caddy-dns/netlify"
+          "godaddy github.com/caddy-dns/godaddy"
+        )
+
+        CADDY_VERSION=$(go list -m -json github.com/caddyserver/caddy/v2@latest | jq -r '.Version')
+        echo "caddy=$CADDY_VERSION" >> "$GITHUB_OUTPUT"
+
+        MATRIX='[]'
+        for entry in "${PLUGINS[@]}"; do
+          name=${entry%% *}
+          context=${entry#* }
+          plugin_version=$(go list -m -json "${context}@latest" | jq -r '.Version')
+          MATRIX=$(printf '%s' "$MATRIX" | jq -c \
+            --arg name "$name" --arg context "$context" --arg plugin_version "$plugin_version" \
+            '. + [{name: $name, context: $context, plugin_version: $plugin_version}]')
+        done
+        echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
   build:
     runs-on: ubuntu-latest
+    needs: versions
 
     strategy:
       fail-fast: false
       max-parallel: 1
       matrix:
-        include:
-        - name: cloudflare
-          context: github.com/caddy-dns/cloudflare
-        - name: webdav
-          context: github.com/mholt/caddy-webdav
-        - name: tencentcloud
-          context: github.com/caddy-dns/tencentcloud
-        - name: edgeone
-          context: github.com/caddy-dns/edgeone
-        - name: alidns
-          context: github.com/caddy-dns/alidns
-        - name: huaweicloud
-          context: github.com/caddy-dns/huaweicloud
-        - name: azure
-          context: github.com/caddy-dns/azure
-        - name: cloudns
-          context: github.com/caddy-dns/cloudns
-        - name: route53
-          context: github.com/caddy-dns/route53
-        - name: duckdns
-          context: github.com/caddy-dns/duckdns
-        - name: porkbun
-          context: github.com/caddy-dns/porkbun
-        - name: acmedns
-          context: github.com/caddy-dns/acmedns
-        - name: digitalocean
-          context: github.com/caddy-dns/digitalocean
-        - name: hetzner
-          context: github.com/caddy-dns/hetzner
-        - name: ovh
-          context: github.com/caddy-dns/ovh
-        - name: desec
-          context: github.com/caddy-dns/desec
-        - name: ionos
-          context: github.com/caddy-dns/ionos
-        - name: rfc2136
-          context: github.com/caddy-dns/rfc2136
-        - name: powerdns
-          context: github.com/caddy-dns/powerdns
-        - name: netcup
-          context: github.com/caddy-dns/netcup
-        - name: inwx
-          context: github.com/caddy-dns/inwx
-        - name: googleclouddns
-          context: github.com/caddy-dns/googleclouddns
-        - name: gandi
-          context: github.com/caddy-dns/gandi
-        - name: netlify
-          context: github.com/caddy-dns/netlify
-        - name: godaddy
-          context: github.com/caddy-dns/godaddy
+        include: ${{ fromJSON(needs.versions.outputs.matrix) }}
 
     steps:
     - name: Checkout code
@@ -89,12 +101,10 @@ jobs:
         go-version: 'stable'
         cache: false
 
-    - name: Get versions
+    - name: Set versions
       run: |
-        CADDY_VERSION=$(go list -m -json github.com/caddyserver/caddy/v2@latest | jq -r '.Version')
-        PLUGIN_VERSION=$(go list -m -json ${{ matrix.context }}@latest | jq -r '.Version')
-        echo "CADDY_VERSION=$CADDY_VERSION" >> $GITHUB_ENV
-        echo "PLUGIN_VERSION=$PLUGIN_VERSION" >> $GITHUB_ENV
+        echo "CADDY_VERSION=${{ needs.versions.outputs.caddy }}" >> "$GITHUB_ENV"
+        echo "PLUGIN_VERSION=${{ matrix.plugin_version }}" >> "$GITHUB_ENV"
 
     - name: Restore build marker
       id: caddy-cache
