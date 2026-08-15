@@ -1,12 +1,30 @@
 # BlazeSnow/Caddy
 
 ![Docker Pulls](https://img.shields.io/docker/pulls/blazesnow/caddy?style=for-the-badge)
-![Docker Image Size](https://img.shields.io/docker/image-size/blazesnow/caddy?style=for-the-badge)
+![Docker Image Size](https://img.shields.io/docker/image-size/blazesnow/caddy/cloudflare?style=for-the-badge)
 ![GitHub last commit (branch)](https://img.shields.io/github/last-commit/BlazeSnow/Caddy/main?style=for-the-badge)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/BlazeSnow/Caddy/build.yml?style=for-the-badge)
 ![GitHub License](https://img.shields.io/github/license/BlazeSnow/Caddy?style=for-the-badge)
 
 镜像名称见：<https://hub.docker.com/r/blazesnow/caddy/tags>
+
+## 使用
+
+每个插件对应一个独立镜像 tag，以 Cloudflare DNS 插件为例：
+
+```bash
+docker run -d \
+  --name caddy \
+  -p 80:80 -p 443:443 \
+  -v /path/to/Caddyfile:/etc/caddy/Caddyfile \
+  -v caddy_data:/data \
+  -v caddy_config:/config \
+  blazesnow/caddy:cloudflare
+```
+
+- 配置目录为 `/config`，数据目录为 `/data`（镜像内通过 `XDG_CONFIG_HOME` / `XDG_DATA_HOME` 指定），建议挂载持久化
+- 镜像基于 Alpine，`-alpine` 后缀的 tag 为历史遗留，与不带后缀的内容一致
+- 管理端口 2019 可选开放
 
 ## ACME-DNS
 
@@ -28,6 +46,7 @@
 | alidns         | <https://github.com/caddy-dns/alidns>         |
 | huaweicloud    | <https://github.com/caddy-dns/huaweicloud>    |
 | azure          | <https://github.com/caddy-dns/azure>          |
+| cloudns        | <https://github.com/caddy-dns/cloudns>        |
 | route53        | <https://github.com/caddy-dns/route53>        |
 | duckdns        | <https://github.com/caddy-dns/duckdns>        |
 | porkbun        | <https://github.com/caddy-dns/porkbun>        |
@@ -42,6 +61,7 @@
 | netcup         | <https://github.com/caddy-dns/netcup>         |
 | inwx           | <https://github.com/caddy-dns/inwx>           |
 | googleclouddns | <https://github.com/caddy-dns/googleclouddns> |
+| gandi          | <https://github.com/caddy-dns/gandi>          |
 | netlify        | <https://github.com/caddy-dns/netlify>        |
 | godaddy        | <https://github.com/caddy-dns/godaddy>        |
 
