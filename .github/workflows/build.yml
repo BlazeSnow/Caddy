@@ -28,6 +28,9 @@ jobs:
       matrix: ${{ steps.versions.outputs.matrix }}
 
     steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+
     - name: Set up golang
       uses: actions/setup-go@v7
       with:
@@ -39,46 +42,23 @@ jobs:
       run: |
         set -eu
 
-        PLUGINS=(
-          "cloudflare github.com/caddy-dns/cloudflare"
-          "webdav github.com/mholt/caddy-webdav"
-          "tencentcloud github.com/caddy-dns/tencentcloud"
-          "edgeone github.com/caddy-dns/edgeone"
-          "alidns github.com/caddy-dns/alidns"
-          "huaweicloud github.com/caddy-dns/huaweicloud"
-          "azure github.com/caddy-dns/azure"
-          "cloudns github.com/caddy-dns/cloudns"
-          "route53 github.com/caddy-dns/route53"
-          "duckdns github.com/caddy-dns/duckdns"
-          "porkbun github.com/caddy-dns/porkbun"
-          "acmedns github.com/caddy-dns/acmedns"
-          "digitalocean github.com/caddy-dns/digitalocean"
-          "hetzner github.com/caddy-dns/hetzner"
-          "ovh github.com/caddy-dns/ovh"
-          "desec github.com/caddy-dns/desec"
-          "ionos github.com/caddy-dns/ionos"
-          "rfc2136 github.com/caddy-dns/rfc2136"
-          "powerdns github.com/caddy-dns/powerdns"
-          "netcup github.com/caddy-dns/netcup"
-          "inwx github.com/caddy-dns/inwx"
-          "googleclouddns github.com/caddy-dns/googleclouddns"
-          "gandi github.com/caddy-dns/gandi"
-          "netlify github.com/caddy-dns/netlify"
-          "godaddy github.com/caddy-dns/godaddy"
-        )
+        jq -e 'type == "array" and length > 0' plugins.json > /dev/null || {
+          echo "::error::plugins.json 无效或为空"
+          exit 1
+        }
 
         CADDY_VERSION=$(go list -m -json github.com/caddyserver/caddy/v2@latest | jq -r '.Version')
         echo "caddy=$CADDY_VERSION" >> "$GITHUB_OUTPUT"
 
         MATRIX='[]'
-        for entry in "${PLUGINS[@]}"; do
-          name=${entry%% *}
-          context=${entry#* }
+        while IFS= read -r entry; do
+          name=$(jq -r '.name' <<< "$entry")
+          context=$(jq -r '.context' <<< "$entry")
           plugin_version=$(go list -m -json "${context}@latest" | jq -r '.Version')
           MATRIX=$(printf '%s' "$MATRIX" | jq -c \
             --arg name "$name" --arg context "$context" --arg plugin_version "$plugin_version" \
             '. + [{name: $name, context: $context, plugin_version: $plugin_version}]')
-        done
+        done < <(jq -c '.[]' plugins.json)
         echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
 
   build:
