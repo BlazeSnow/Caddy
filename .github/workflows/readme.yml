@@ -35,7 +35,7 @@ jobs:
         README=$(jq -Rs . README.md)
 
         curl -sf -X PATCH "https://hub.docker.com/v2/repositories/${REPO}/" \
-          -H "Content-Type: application/json" -H "Authorization: JWT ${TOKEN}" \
+          -H "Content-Type: application/json" -H "Authorization: Bearer ${TOKEN}" \
           -d "{\"full_description\": ${README}}"
 
         echo "已同步 README 到 ${REPO}"
