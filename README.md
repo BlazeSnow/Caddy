@@ -8,6 +8,11 @@
 
 镜像名称见：<https://hub.docker.com/r/blazesnow/caddy/tags>
 
+**什么情况需要本镜像？** Caddy 默认通过 HTTP-01 质询验证域名，要求 CA（如 Let's Encrypt）能从公网直接访问你的 80 端口。
+
+- 站点**未套 CDN**（80 端口可直达）：官方 Caddy 镜像即可完成自动 HTTPS，无需使用本镜像
+- 站点**套了 CDN**（如腾讯 EdgeOne）：CDN 代理了 80/443 端口，CA 的质询请求穿不透到你的服务器，官方镜像无法完成证书验证。此时应使用本镜像——已集成各主流 DNS 提供商的插件，通过 **DNS-01 质询**（修改 DNS TXT 记录）验证域名，不依赖任何入站端口，选用对应 DNS 提供商的 tag 即可
+
 ## 使用
 
 每个插件对应一个独立镜像 tag，以 Cloudflare DNS 插件为例：
