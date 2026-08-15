@@ -10,8 +10,6 @@
 
 镜像名称见：<https://hub.docker.com/r/blazesnow/caddy/tags>
 
-开发版（beta）镜像（跟随 dev 分支构建，供测试）见：<https://hub.docker.com/r/blazesnow/caddy-beta/tags>
-
 Caddy 默认通过 HTTP-01 质询验证域名，要求 CA（如 Let's Encrypt）能从公网直接访问你的 80 端口。
 
 - 站点**未套 CDN**（80 端口可直达）：官方 Caddy 镜像即可完成自动 HTTPS，无需使用本镜像
