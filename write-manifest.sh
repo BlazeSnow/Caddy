@@ -5,4 +5,4 @@
 set -eu
 
 mkdir -p .build-cache
-echo "$ALL_VERSIONS" > .build-cache/manifest.json
+echo "$ALL_VERSIONS" >.build-cache/manifest.json

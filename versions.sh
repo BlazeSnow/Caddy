@@ -10,7 +10,7 @@
 #   BETA_PLUGINS    beta 模式只考虑这些插件
 set -eu
 
-jq -e 'type == "array" and length > 0' plugins.json > /dev/null || {
+jq -e 'type == "array" and length > 0' plugins.json >/dev/null || {
   echo "::error::plugins.json 无效或为空"
   exit 1
 }
@@ -30,8 +30,8 @@ ALPINE_FP=$(curl -sf "https://hub.docker.com/v2/repositories/library/alpine/tags
 DEBIAN_FP=$(curl -sf "https://hub.docker.com/v2/repositories/library/debian/tags/${BASE_DEBIAN##*:}" | jq -c '[.images[].digest] | sort') || DEBIAN_FP="unknown"
 
 BASE_CHANGED="false"
-if [ "$(printf '%s' "$MANIFEST" | jq -r '.base_alpine // "none"')" != "$ALPINE_FP" ] || \
-   [ "$(printf '%s' "$MANIFEST" | jq -r '.base_debian // "none"')" != "$DEBIAN_FP" ]; then
+if [ "$(printf '%s' "$MANIFEST" | jq -r '.base_alpine // "none"')" != "$ALPINE_FP" ] ||
+  [ "$(printf '%s' "$MANIFEST" | jq -r '.base_debian // "none"')" != "$DEBIAN_FP" ]; then
   BASE_CHANGED="true"
 fi
 
@@ -50,8 +50,8 @@ fi
 MATRIX='[]'
 ALL='{}'
 while IFS= read -r entry; do
-  name=$(jq -r '.name' <<< "$entry")
-  context=$(jq -r '.context' <<< "$entry")
+  name=$(jq -r '.name' <<<"$entry")
+  context=$(jq -r '.context' <<<"$entry")
   plugin_version=$(go list -m -json "${context}@latest" | jq -r '.Version')
 
   ALL=$(printf '%s' "$ALL" | jq -c --arg name "$name" --arg plugin_version "$plugin_version" \
@@ -63,10 +63,10 @@ while IFS= read -r entry; do
       --arg name "$name" --arg context "$context" --arg plugin_version "$plugin_version" \
       '. + [{name: $name, context: $context, plugin_version: $plugin_version}]')
   fi
-done <<< "$SELECTED"
+done <<<"$SELECTED"
 
 ALL=$(printf '%s' "$ALL" | jq -c --arg base_alpine "$ALPINE_FP" --arg base_debian "$DEBIAN_FP" \
   '. + {base_alpine: $base_alpine, base_debian: $base_debian}')
 
-echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
-echo "all_versions=$ALL" >> "$GITHUB_OUTPUT"
+echo "matrix=$MATRIX" >>"$GITHUB_OUTPUT"
+echo "all_versions=$ALL" >>"$GITHUB_OUTPUT"
