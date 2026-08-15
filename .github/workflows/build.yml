@@ -22,6 +22,10 @@ concurrency:
 env:
   BASE_ALPINE: public.ecr.aws/docker/library/alpine:3.24
   BASE_DEBIAN: public.ecr.aws/docker/library/debian:trixie-slim
+  # dev 分支推送构建 beta 镜像，其余触发（定时/手动/发版）构建生产镜像
+  IMAGE_PREFIX: ${{ github.ref == 'refs/heads/dev' && 'blazesnow/caddy-beta' || 'blazesnow/caddy' }}
+  GHCR_IMAGE_PREFIX: ${{ github.ref == 'refs/heads/dev' && 'ghcr.io/blazesnow/caddy-beta' || 'ghcr.io/blazesnow/caddy' }}
+  CACHE_NS: ${{ github.ref == 'refs/heads/dev' && 'beta-' || '' }}
 
 jobs:
   versions:
@@ -51,9 +55,9 @@ jobs:
       uses: actions/cache/restore@v6
       with:
         path: .build-cache/manifest.json
-        key: build-manifest-${{ steps.caddy.outputs.caddy }}
+        key: build-manifest-${{ env.CACHE_NS }}${{ steps.caddy.outputs.caddy }}
         restore-keys: |
-          build-manifest-${{ steps.caddy.outputs.caddy }}-
+          build-manifest-${{ env.CACHE_NS }}${{ steps.caddy.outputs.caddy }}-
 
     - name: Get plugin versions and build matrix
       id: versions
@@ -183,10 +187,10 @@ jobs:
         build-args: |
           BASE_IMAGE=${{ env.BASE_ALPINE }}
         tags: |
-          blazesnow/caddy:${{ matrix.name }}-alpine
-          blazesnow/caddy:${{ matrix.name }}
-          ghcr.io/blazesnow/caddy:${{ matrix.name }}-alpine
-          ghcr.io/blazesnow/caddy:${{ matrix.name }}
+          ${{ env.IMAGE_PREFIX }}:${{ matrix.name }}-alpine
+          ${{ env.IMAGE_PREFIX }}:${{ matrix.name }}
+          ${{ env.GHCR_IMAGE_PREFIX }}:${{ matrix.name }}-alpine
+          ${{ env.GHCR_IMAGE_PREFIX }}:${{ matrix.name }}
 
     - name: Build and push (Debian)
       uses: docker/build-push-action@v7
@@ -198,8 +202,8 @@ jobs:
         build-args: |
           BASE_IMAGE=${{ env.BASE_DEBIAN }}
         tags: |
-          blazesnow/caddy:${{ matrix.name }}-slim
-          ghcr.io/blazesnow/caddy:${{ matrix.name }}-slim
+          ${{ env.IMAGE_PREFIX }}:${{ matrix.name }}-slim
+          ${{ env.GHCR_IMAGE_PREFIX }}:${{ matrix.name }}-slim
 
   finalize:
     runs-on: ubuntu-latest
@@ -215,4 +219,4 @@ jobs:
       uses: actions/cache/save@v6
       with:
         path: .build-cache/manifest.json
-        key: build-manifest-${{ needs.versions.outputs.caddy }}-${{ github.run_id }}
+        key: build-manifest-${{ env.CACHE_NS }}${{ needs.versions.outputs.caddy }}-${{ github.run_id }}

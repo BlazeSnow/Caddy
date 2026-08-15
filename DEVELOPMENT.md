@@ -44,6 +44,12 @@
 - 所有 job 串行执行（`max-parallel: 1`），主要顾虑是 Docker Hub 推送速率
 - `setup-go` 已关闭内置缓存（`cache: false`），仓库没有 go.mod，内置缓存无法计算 key
 
+### 4. 开发版（beta）镜像
+
+- **在 Actions 页面手动触发工作流并选择 dev 分支**时，镜像推送到 `blazesnow/caddy-beta`（GHCR 为 `ghcr.io/blazesnow/caddy-beta`），tag 结构与生产一致；**其余触发**（定时、main 分支手动）构建生产镜像 `blazesnow/caddy`
+- 镜像前缀由 workflow 级 env 的 `IMAGE_PREFIX` / `GHCR_IMAGE_PREFIX` 控制（按 `github.ref` 判断），beta 与生产的 **manifest 缓存相互独立**（`CACHE_NS`），互不影响跳过判断
+- 开发版用于测试 dev 分支上的构建流水线和插件改动，不产生 GitHub Release；发版仍走 main 分支 + `tag.ps1` 流程
+
 ## 添加 / 修改插件
 
 1. 编辑 `plugins.json`，按现有格式加一行（或改一行），例如：
