@@ -232,6 +232,8 @@ jobs:
         build-args: |
           BASE_IMAGE=${{ env.BASE_IMAGE_REPO }}:${{ env.BASE_TAG_ALPINE }}${{ env.BASE_TAG_SUFFIX }}
           VERSION=${{ env.APP_VERSION }}
+          CADDY_VERSION=${{ env.CADDY_VERSION }}
+          PLUGIN_VERSION=${{ env.PLUGIN_VERSION }}
         tags: |
           ${{ env.IMAGE_PREFIX }}:${{ matrix.name }}-alpine
           ${{ env.IMAGE_PREFIX }}:${{ matrix.name }}
@@ -248,6 +250,8 @@ jobs:
         build-args: |
           BASE_IMAGE=${{ env.BASE_IMAGE_REPO }}:${{ env.BASE_TAG_DEBIAN }}${{ env.BASE_TAG_SUFFIX }}
           VERSION=${{ env.APP_VERSION }}
+          CADDY_VERSION=${{ env.CADDY_VERSION }}
+          PLUGIN_VERSION=${{ env.PLUGIN_VERSION }}
         tags: |
           ${{ env.IMAGE_PREFIX }}:${{ matrix.name }}-slim
           ${{ env.GHCR_IMAGE_PREFIX }}:${{ matrix.name }}-slim
