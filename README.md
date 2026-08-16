@@ -2,6 +2,7 @@
 
 ![Docker Pulls](https://img.shields.io/docker/pulls/blazesnow/caddy?style=for-the-badge)
 ![Docker Image Size](https://img.shields.io/docker/image-size/blazesnow/caddy/cloudflare?style=for-the-badge)
+![GitHub Release](https://img.shields.io/github/v/release/BlazeSnow/Caddy?include_prereleases&style=for-the-badge)
 ![GitHub last commit (branch)](https://img.shields.io/github/last-commit/BlazeSnow/Caddy/main?style=for-the-badge)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/BlazeSnow/Caddy/build.yml?style=for-the-badge)
 ![GitHub License](https://img.shields.io/github/license/BlazeSnow/Caddy?style=for-the-badge)

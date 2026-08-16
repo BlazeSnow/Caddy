@@ -1,6 +1,9 @@
 name: Build and Publish Caddy Plugins
 
 on:
+  push:
+    tags:
+    - 'v*'
   workflow_dispatch:
     inputs:
       force_build:
@@ -22,21 +25,28 @@ concurrency:
 env:
   BASE_ALPINE: public.ecr.aws/docker/library/alpine:3.24
   BASE_DEBIAN: public.ecr.aws/docker/library/debian:trixie-slim
-  # dev 分支推送构建 beta 镜像，其余触发（定时/手动/发版）构建生产镜像
-  IMAGE_PREFIX: ${{ github.ref == 'refs/heads/dev' && 'blazesnow/caddy-beta' || 'blazesnow/caddy' }}
-  GHCR_IMAGE_PREFIX: ${{ github.ref == 'refs/heads/dev' && 'ghcr.io/blazesnow/caddy-beta' || 'ghcr.io/blazesnow/caddy' }}
-  CACHE_NS: ${{ github.ref == 'refs/heads/dev' && 'beta-' || '' }}
+  # 静态基础镜像（base job 构建，只推 GHCR）；tag 后半段与上方 BASE_ALPINE/BASE_DEBIAN 保持一致
+  BASE_IMAGE_REPO: ghcr.io/blazesnow/caddy-base
+  BASE_TAG_ALPINE: alpine-3.24
+  BASE_TAG_DEBIAN: debian-trixie-slim
+  # beta 模式标志（dev 分支或 v*-beta* tag），供 build job 决定版本 label
+  BETA: ${{ github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta')) }}
+  # beta 模式（dev 分支，或推送 vX.Y.Z-beta.N 预发布 tag）
+  BASE_TAG_SUFFIX: ${{ (github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta'))) && '-beta' || '' }}
+  IMAGE_PREFIX: ${{ (github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta'))) && 'blazesnow/caddy-beta' || 'blazesnow/caddy' }}
+  GHCR_IMAGE_PREFIX: ${{ (github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta'))) && 'ghcr.io/blazesnow/caddy-beta' || 'ghcr.io/blazesnow/caddy' }}
   # beta 模式（dev 分支手动触发）只构建这些插件，用于快速验证
   BETA_PLUGINS: cloudflare tencentcloud webdav
 
 jobs:
+  # 读取已有镜像的版本信息（label）对比最新版本，决定 matrix / base_changed
   versions:
     runs-on: ubuntu-latest
 
     outputs:
-      caddy: ${{ steps.caddy.outputs.caddy }}
+      caddy: ${{ steps.versions.outputs.caddy }}
       matrix: ${{ steps.versions.outputs.matrix }}
-      all_versions: ${{ steps.versions.outputs.all_versions }}
+      base_changed: ${{ steps.versions.outputs.base_changed }}
 
     steps:
     - name: Checkout code
@@ -48,28 +58,71 @@ jobs:
         go-version: 'stable'
         cache: false
 
-    - name: Get Caddy version
-      id: caddy
-      run: echo "caddy=$(go list -m -json github.com/caddyserver/caddy/v2@latest | jq -r '.Version')" >> "$GITHUB_OUTPUT"
-
-    - name: Restore build manifest
-      id: manifest-cache
-      uses: actions/cache/restore@v6
-      with:
-        path: .build-cache/manifest.json
-        key: build-manifest-${{ env.CACHE_NS }}${{ steps.caddy.outputs.caddy }}
-        restore-keys: |
-          build-manifest-${{ env.CACHE_NS }}${{ steps.caddy.outputs.caddy }}-
-
-    - name: Get plugin versions and build matrix
+    - name: Get versions and build matrix
       id: versions
       env:
         FORCE_BUILD: ${{ github.event.inputs.force_build }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: bash versions.sh
 
-  build:
+  # 静态基础镜像：由 versions job 的 base_changed 判定（上游 digest 变化 / 镜像缺失 / 强制触发）
+  base:
     runs-on: ubuntu-latest
     needs: versions
+    if: needs.versions.outputs.base_changed == 'true'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v7
+
+    - name: Login to GitHub
+      uses: docker/login-action@v4.5.2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v4
+
+    - name: Set base digests
+      run: bash set-base-digests.sh
+
+    - name: Build and push base image (Alpine)
+      uses: docker/build-push-action@v7
+      with:
+        context: .
+        file: ./Dockerfile.base
+        push: true
+        platforms: linux/amd64,linux/arm64
+        build-args: |
+          BASE_IMAGE=${{ env.BASE_ALPINE }}
+          UPSTREAM_DIGEST_AMD64=${{ env.ALPINE_DIGEST_AMD64 }}
+          UPSTREAM_DIGEST_ARM64=${{ env.ALPINE_DIGEST_ARM64 }}
+        tags: |
+          ${{ env.BASE_IMAGE_REPO }}:${{ env.BASE_TAG_ALPINE }}${{ env.BASE_TAG_SUFFIX }}
+
+    - name: Build and push base image (Debian)
+      uses: docker/build-push-action@v7
+      with:
+        context: .
+        file: ./Dockerfile.base
+        push: true
+        platforms: linux/amd64,linux/arm64
+        build-args: |
+          BASE_IMAGE=${{ env.BASE_DEBIAN }}
+          UPSTREAM_DIGEST_AMD64=${{ env.DEBIAN_DIGEST_AMD64 }}
+          UPSTREAM_DIGEST_ARM64=${{ env.DEBIAN_DIGEST_ARM64 }}
+        tags: |
+          ${{ env.BASE_IMAGE_REPO }}:${{ env.BASE_TAG_DEBIAN }}${{ env.BASE_TAG_SUFFIX }}
+
+  # 动态矩阵构建：只构建 versions job 判定为需要重建的插件
+  build:
+    runs-on: ubuntu-latest
+    needs: [versions, base]
     if: needs.versions.outputs.matrix != '[]'
 
     strategy:
@@ -89,9 +142,16 @@ jobs:
         cache: false
 
     - name: Set versions
-      run: |
-        echo "CADDY_VERSION=${{ needs.versions.outputs.caddy }}" >> "$GITHUB_ENV"
-        echo "PLUGIN_VERSION=${{ matrix.plugin_version }}" >> "$GITHUB_ENV"
+      env:
+        CADDY_VERSION: ${{ needs.versions.outputs.caddy }}
+        PLUGIN_VERSION: ${{ matrix.plugin_version }}
+        BETA: ${{ env.BETA }}
+        GITHUB_REF_TYPE: ${{ github.ref_type }}
+      run: bash set-versions.sh
+
+    - name: Set Go version
+      id: gover
+      run: echo "version=$(go env GOVERSION)" >>"$GITHUB_OUTPUT"
 
     - name: Restore Go modules cache
       id: go-mod-cache
@@ -99,6 +159,13 @@ jobs:
       with:
         path: ~/go/pkg/mod
         key: go-mod-${{ env.CADDY_VERSION }}
+
+    - name: Restore Go build cache
+      id: go-build-cache
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.cache/go-build
+        key: go-build-${{ env.CADDY_VERSION }}-${{ steps.gover.outputs.version }}
 
     - name: Install xcaddy
       run: go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
@@ -115,6 +182,13 @@ jobs:
         path: ~/go/pkg/mod
         key: go-mod-${{ env.CADDY_VERSION }}
 
+    - name: Save Go build cache
+      if: steps.go-build-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v6
+      with:
+        path: ~/.cache/go-build
+        key: go-build-${{ env.CADDY_VERSION }}-${{ steps.gover.outputs.version }}
+
     - name: Login to Docker Hub
       uses: docker/login-action@v4.5.2
       with:
@@ -128,9 +202,6 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v4
-
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
 
@@ -142,7 +213,10 @@ jobs:
         push: true
         platforms: linux/amd64,linux/arm64
         build-args: |
-          BASE_IMAGE=${{ env.BASE_ALPINE }}
+          BASE_IMAGE=${{ env.BASE_IMAGE_REPO }}:${{ env.BASE_TAG_ALPINE }}${{ env.BASE_TAG_SUFFIX }}
+          VERSION=${{ env.APP_VERSION }}
+          CADDY_VERSION=${{ env.CADDY_VERSION }}
+          PLUGIN_VERSION=${{ env.PLUGIN_VERSION }}
         tags: |
           ${{ env.IMAGE_PREFIX }}:${{ matrix.name }}-alpine
           ${{ env.IMAGE_PREFIX }}:${{ matrix.name }}
@@ -157,26 +231,10 @@ jobs:
         push: true
         platforms: linux/amd64,linux/arm64
         build-args: |
-          BASE_IMAGE=${{ env.BASE_DEBIAN }}
+          BASE_IMAGE=${{ env.BASE_IMAGE_REPO }}:${{ env.BASE_TAG_DEBIAN }}${{ env.BASE_TAG_SUFFIX }}
+          VERSION=${{ env.APP_VERSION }}
+          CADDY_VERSION=${{ env.CADDY_VERSION }}
+          PLUGIN_VERSION=${{ env.PLUGIN_VERSION }}
         tags: |
           ${{ env.IMAGE_PREFIX }}:${{ matrix.name }}-slim
           ${{ env.GHCR_IMAGE_PREFIX }}:${{ matrix.name }}-slim
-
-  finalize:
-    runs-on: ubuntu-latest
-    needs: [versions, build]
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v7
-
-    - name: Write build manifest
-      env:
-        ALL_VERSIONS: ${{ needs.versions.outputs.all_versions }}
-      run: bash write-manifest.sh
-
-    - name: Save build manifest
-      uses: actions/cache/save@v6
-      with:
-        path: .build-cache/manifest.json
-        key: build-manifest-${{ env.CACHE_NS }}${{ needs.versions.outputs.caddy }}-${{ github.run_id }}

@@ -1,38 +1,23 @@
-# 运行镜像（默认 Alpine，可用 --build-arg BASE_IMAGE=... 切换基础镜像）
-ARG BASE_IMAGE=public.ecr.aws/docker/library/alpine:3.24
+# 运行镜像：从预构建的静态基础镜像（ghcr.io/blazesnow/caddy-base）出发，
+# 仅注入 CI 编译好的对应架构 caddy 二进制。静态层见 ./Dockerfile.base。
+ARG BASE_IMAGE=ghcr.io/blazesnow/caddy-base:alpine-3.24
 FROM ${BASE_IMAGE}
 
 ARG TARGETOS
 ARG TARGETARCH
 
-LABEL maintainer="git@blazesnow.org"
-LABEL repository="https://github.com/BlazeSnow/Caddy"
+# 基础镜像引用（FROM 前的 ARG 在 FROM 后作用域外，重新声明带回；CI 传入 alpine/debian 对应 tag）
+ARG BASE_IMAGE
+LABEL org.opencontainers.image.base.name="${BASE_IMAGE}"
 
-# 创建配置和数据目录
-RUN mkdir -p /config /data
+# 发布版本（CI 注入 build-arg）：生产为 VERSION 文件的正式版号，beta 为 tag 名或 dev
+ARG VERSION=dev
+LABEL org.opencontainers.image.version="${VERSION}"
+# 本次构建的 Caddy 和插件版本（CI 注入），供 docker inspect 查看镜像构成
+ARG CADDY_VERSION
+LABEL caddy-version="${CADDY_VERSION}"
+ARG PLUGIN_VERSION
+LABEL plugin-version="${PLUGIN_VERSION}"
 
-# 补齐依赖（按基础镜像的包管理器选择）
-RUN if command -v apk >/dev/null 2>&1; then \
-      apk add --no-cache ca-certificates libcap mailcap; \
-    elif command -v apt-get >/dev/null 2>&1; then \
-      apt-get update && apt-get install -y --no-install-recommends ca-certificates libcap2-bin mailcap && rm -rf /var/lib/apt/lists/*; \
-    fi
-
-# 复制 CI 中构建好的对应架构可执行文件
-COPY ./dist/${TARGETOS}_${TARGETARCH}/caddy /usr/bin/caddy
-
-# 设置可执行文件权限
-RUN chmod +x /usr/bin/caddy
-
-# 复制默认配置文件
-COPY ./Caddyfile /etc/caddy/Caddyfile
-
-# 设置存储目录
-ENV XDG_CONFIG_HOME=/config
-ENV XDG_DATA_HOME=/data
-
-# 开放端口
-EXPOSE 80 443 443/udp 2019
-
-# 运行命令
-CMD ["/usr/bin/caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+# 注入 CI 中构建好的对应架构可执行文件（COPY --chmod 设置执行位，免去 RUN 层）
+COPY --chmod=755 ./dist/${TARGETOS}_${TARGETARCH}/caddy /usr/bin/caddy
