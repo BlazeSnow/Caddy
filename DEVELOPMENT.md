@@ -14,7 +14,7 @@
 ├── VERSION             # 版本号（发版时 tag.ps1 的唯一读取来源）
 ├── versions.sh         # 版本检查 + 构建矩阵生成（versions job 的逻辑）
 ├── set-versions.sh     # 写入本次构建的 Caddy/插件版本和镜像版本 label（build job）
-├── set-base-digests.sh # 查询基础镜像 digest，写入 BASE_DIGEST_*（build job）
+├── set-base-digests.sh # 查询上游 alpine/debian 按架构 digest（base job，注入 base 镜像）
 ├── check-base.sh       # 判断基础镜像是否需要重建（base job 的逻辑）
 ├── build-caddy.sh      # xcaddy 编译 amd64/arm64 二进制
 ├── write-manifest.sh   # 写入构建清单（finalize job）
@@ -60,7 +60,8 @@
 - **跳过判断**：在 `versions` job 由 `versions.sh` 完成——插件版本、基础镜像指纹都没变的插件不会进入 matrix，build job 只有在 matrix 非空时才会运行（`if: needs.versions.outputs.matrix != '[]'`），避免版本没变就重复编译
 - **编译**：`xcaddy build` 产出 `linux/amd64`、`linux/arm64` 两个二进制（CGO 关闭）
 - **推送**：Docker Buildx 多架构构建，`Dockerfile` 从 `ghcr.io/blazesnow/caddy-base` 继承、仅注入二进制（`COPY --chmod`，无 RUN 层），推送到 Docker Hub（`blazesnow/caddy`）和 GHCR（`ghcr.io/blazesnow/caddy`），每个插件打 `<插件>-alpine` 和 `<插件>` 两个 tag。插件镜像没有任何 RUN 步骤，多平台构建不需要 QEMU（只有 base job 需要）
-- 镜像会写入 `org.opencontainers.image.version` label（由 build job 以 build-arg 注入）：生产镜像用 `VERSION` 文件的正式版号；beta 镜像不携带正式版号——beta tag 触发时用 tag 名（如 `1.4.4-beta.1`），dev 分支触发时为 `dev`。同时写入 `org.opencontainers.image.base.name` / `org.opencontainers.image.base.digest`（基础镜像引用及其 index digest，digest 由 build job 用 `docker buildx imagetools inspect` 手动查询注入）、`caddy-version` 和 `plugin-version` label，`docker inspect` 即可查看镜像构成
+- 镜像会写入 `org.opencontainers.image.version` label（由 build job 以 build-arg 注入）：生产镜像用 `VERSION` 文件的正式版号；beta 镜像不携带正式版号——beta tag 触发时用 tag 名（如 `1.4.4-beta.1`），dev 分支触发时为 `dev`。同时写入 `org.opencontainers.image.base.name`（基础镜像引用）、`caddy-version` 和 `plugin-version` label（本次构建的 Caddy 版本和插件版本），`docker inspect` 即可查看镜像构成
+- base 镜像写入 `base-upstream-digest-amd64` / `base-upstream-digest-arm64` label（上游 alpine/debian 对应架构的 digest，由 base job 用 `set-base-digests.sh` 查询注入），插件镜像继承。这些 label 本身就是"构建记录"——后续可直接对比当前上游 digest 判断是否需要重建，替代 cache 中的 manifest 记录
 - 构建完成后由 `finalize` job 用 `write-manifest.sh` 把本次各插件版本和基础镜像指纹写入 `.build-cache/manifest.json` 并缓存，供下次跳过判断使用
 
 ### 4. 注意事项

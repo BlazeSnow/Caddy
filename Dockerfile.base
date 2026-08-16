@@ -21,6 +21,13 @@ RUN if command -v apk >/dev/null 2>&1; then \
 # 复制默认配置文件
 COPY ./Caddyfile /etc/caddy/Caddyfile
 
+# 上游基础镜像按架构的 digest（base job 以 build-arg 注入），插件镜像继承，
+# 供后续直接对比上游判断是否需要重建（替代 cache 中的 manifest 记录）
+ARG UPSTREAM_DIGEST_AMD64
+LABEL base-upstream-digest-amd64="${UPSTREAM_DIGEST_AMD64}"
+ARG UPSTREAM_DIGEST_ARM64
+LABEL base-upstream-digest-arm64="${UPSTREAM_DIGEST_ARM64}"
+
 # 设置存储目录
 ENV XDG_CONFIG_HOME=/config
 ENV XDG_DATA_HOME=/data

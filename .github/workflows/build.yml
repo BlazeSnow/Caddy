@@ -111,6 +111,10 @@ jobs:
       if: steps.check.outputs.needed == 'true'
       uses: docker/setup-buildx-action@v4
 
+    - name: Set base digests
+      if: steps.check.outputs.needed == 'true'
+      run: bash set-base-digests.sh
+
     - name: Build and push base image (Alpine)
       if: steps.check.outputs.needed == 'true'
       uses: docker/build-push-action@v7
@@ -121,6 +125,8 @@ jobs:
         platforms: linux/amd64,linux/arm64
         build-args: |
           BASE_IMAGE=${{ env.BASE_ALPINE }}
+          UPSTREAM_DIGEST_AMD64=${{ env.ALPINE_DIGEST_AMD64 }}
+          UPSTREAM_DIGEST_ARM64=${{ env.ALPINE_DIGEST_ARM64 }}
         tags: |
           ${{ env.BASE_IMAGE_REPO }}:${{ env.BASE_TAG_ALPINE }}${{ env.BASE_TAG_SUFFIX }}
 
@@ -134,6 +140,8 @@ jobs:
         platforms: linux/amd64,linux/arm64
         build-args: |
           BASE_IMAGE=${{ env.BASE_DEBIAN }}
+          UPSTREAM_DIGEST_AMD64=${{ env.DEBIAN_DIGEST_AMD64 }}
+          UPSTREAM_DIGEST_ARM64=${{ env.DEBIAN_DIGEST_ARM64 }}
         tags: |
           ${{ env.BASE_IMAGE_REPO }}:${{ env.BASE_TAG_DEBIAN }}${{ env.BASE_TAG_SUFFIX }}
 
@@ -222,9 +230,6 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
 
-    - name: Set base digests
-      run: bash set-base-digests.sh
-
     - name: Build and push (Alpine)
       uses: docker/build-push-action@v7
       with:
@@ -234,7 +239,6 @@ jobs:
         platforms: linux/amd64,linux/arm64
         build-args: |
           BASE_IMAGE=${{ env.BASE_IMAGE_REPO }}:${{ env.BASE_TAG_ALPINE }}${{ env.BASE_TAG_SUFFIX }}
-          BASE_DIGEST=${{ env.BASE_DIGEST_ALPINE }}
           VERSION=${{ env.APP_VERSION }}
           CADDY_VERSION=${{ env.CADDY_VERSION }}
           PLUGIN_VERSION=${{ env.PLUGIN_VERSION }}
@@ -253,7 +257,6 @@ jobs:
         platforms: linux/amd64,linux/arm64
         build-args: |
           BASE_IMAGE=${{ env.BASE_IMAGE_REPO }}:${{ env.BASE_TAG_DEBIAN }}${{ env.BASE_TAG_SUFFIX }}
-          BASE_DIGEST=${{ env.BASE_DIGEST_DEBIAN }}
           VERSION=${{ env.APP_VERSION }}
           CADDY_VERSION=${{ env.CADDY_VERSION }}
           PLUGIN_VERSION=${{ env.PLUGIN_VERSION }}

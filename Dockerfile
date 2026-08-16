@@ -6,11 +6,9 @@ FROM ${BASE_IMAGE}
 ARG TARGETOS
 ARG TARGETARCH
 
-# 基础镜像引用与 digest（FROM 前的 ARG 在 FROM 后作用域外，重新声明带回；CI 传入）
+# 基础镜像引用（FROM 前的 ARG 在 FROM 后作用域外，重新声明带回；CI 传入 alpine/debian 对应 tag）
 ARG BASE_IMAGE
 LABEL org.opencontainers.image.base.name="${BASE_IMAGE}"
-ARG BASE_DIGEST
-LABEL org.opencontainers.image.base.digest="${BASE_DIGEST}"
 
 # 发布版本（CI 注入 build-arg）：生产为 VERSION 文件的正式版号，beta 为 tag 名或 dev
 ARG VERSION=dev
