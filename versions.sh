@@ -3,7 +3,7 @@
 #
 # 依赖环境变量：
 #   GITHUB_OUTPUT   输出写入目标（GitHub Actions 自动提供）
-#   GITHUB_REF      当前分支（refs/heads/dev 时为 beta 模式）
+#   GITHUB_REF      当前分支或 tag（refs/heads/dev 或 v*-beta* tag 时为 beta 模式）
 #   FORCE_BUILD     强制全量构建（true/false）
 #   BASE_ALPINE     Alpine 基础镜像 pin
 #   BASE_DEBIAN     Debian 基础镜像 pin
@@ -36,7 +36,7 @@ if [ "$(printf '%s' "$MANIFEST" | jq -r '.base_alpine // "none"')" != "$ALPINE_F
 fi
 
 BETA_MODE="false"
-if [ "$GITHUB_REF" = "refs/heads/dev" ]; then
+if [ "$GITHUB_REF" = "refs/heads/dev" ] || [[ "$GITHUB_REF" == refs/tags/*-beta* ]]; then
 	BETA_MODE="true"
 	echo "beta 模式：仅考虑 $BETA_PLUGINS"
 fi

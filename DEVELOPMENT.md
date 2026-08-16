@@ -26,7 +26,7 @@
 
 ## 构建流水线（build.yml）
 
-每天 UTC 17:00（北京时间凌晨 1:00）自动触发，也可在 GitHub Actions 页面手动触发（`workflow_dispatch`，可选 `force_build=true` 强制忽略版本缓存重建所有镜像）。
+每天 UTC 17:00（北京时间凌晨 1:00）自动触发，也可在 GitHub Actions 页面手动触发（`workflow_dispatch`，可选 `force_build=true` 强制忽略版本缓存重建所有镜像）；推送 `vX.Y.Z-beta.N` 格式的 tag 也会触发，按 beta 模式构建。
 
 ### 1. versions job —— 版本检查
 
@@ -69,7 +69,7 @@
 
 ### 5. 开发版（beta）镜像
 
-- **在 Actions 页面手动触发工作流并选择 dev 分支**时，镜像推送到 `blazesnow/caddy-beta`（GHCR 为 `ghcr.io/blazesnow/caddy-beta`），tag 结构与生产一致；**其余触发**（定时、main 分支手动）构建生产镜像 `blazesnow/caddy`
+- **beta 模式的触发方式**：在 Actions 页面手动触发工作流并选择 dev 分支，或推送 `vX.Y.Z-beta.N` 格式的 tag。此时镜像推送到 `blazesnow/caddy-beta`（GHCR 为 `ghcr.io/blazesnow/caddy-beta`），tag 结构与生产一致；**其余触发**（定时、main 分支手动、稳定版 tag）构建生产镜像 `blazesnow/caddy`
 - 镜像前缀由 workflow 级 env 的 `IMAGE_PREFIX` / `GHCR_IMAGE_PREFIX` 控制（按 `github.ref` 判断），beta 与生产的 **manifest 缓存相互独立**（`CACHE_NS`），互不影响跳过判断
 - 基础镜像同样按分支隔离：beta 模式的 base tag 带 `-beta` 后缀（`BASE_TAG_SUFFIX`），不会覆盖生产基础镜像
 - beta 模式**只考虑 `BETA_PLUGINS` 指定的少量插件**（默认 cloudflare / tencentcloud / webdav，可自行修改），与生产一样参与 manifest 跳过判断（版本或基础镜像指纹未变则跳过），需要强制重建时勾选 `force_build`
@@ -105,6 +105,20 @@
 5. 推送成功后，Actions 的 Version 工作流会自动创建 Release
 
 > tag 必须是 `vX.Y.Z` 格式；本地或远程已存在同名 tag 时脚本会拒绝执行。
+
+### beta 预发布
+
+需要发布 beta 测试版时，用 `-Beta` 打预发布 tag：
+
+```powershell
+.\tag.ps1 -Beta                 # 自动读最新版本，如 v1.4.4-beta.1
+.\tag.ps1 -Tag v1.5.0 -Beta     # 或指定基础版本
+```
+
+- beta tag 格式为 `vX.Y.Z-beta.N`，序号 N 自动取本地 + 远程已有序号的最大值 +1（如 v1.4.4-beta.1 → v1.4.4-beta.2）
+- 推送后同时触发两个工作流：`build.yml` 按 beta 模式构建镜像（`blazesnow/caddy-beta`，只含 `BETA_PLUGINS`），`version.yml` 创建标为 **Prerelease** 的 Release
+- beta tag 可以打在任意分支（dev 或 main）的提交上，tag 名中的 `-beta` 本身决定 beta 模式
+- 仍受 manifest 跳过逻辑约束：插件版本和基础镜像都没变时构建会自动跳过（此时只产生 Prerelease）；需要强制重建时在 Actions 页面手动触发 dev 分支并勾选 `force_build`
 
 ## 本地验证
 

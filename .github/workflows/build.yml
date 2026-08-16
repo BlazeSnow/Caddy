@@ -1,6 +1,9 @@
 name: Build and Publish Caddy Plugins
 
 on:
+  push:
+    tags:
+    - 'v*-beta*'
   workflow_dispatch:
     inputs:
       force_build:
@@ -26,12 +29,11 @@ env:
   BASE_IMAGE_REPO: ghcr.io/blazesnow/caddy-base
   BASE_TAG_ALPINE: alpine-3.24
   BASE_TAG_DEBIAN: debian-trixie-slim
-  # beta 模式（dev 分支）使用独立的 base tag，避免覆盖生产镜像
-  BASE_TAG_SUFFIX: ${{ github.ref == 'refs/heads/dev' && '-beta' || '' }}
-  # dev 分支推送构建 beta 镜像，其余触发（定时/手动/发版）构建生产镜像
-  IMAGE_PREFIX: ${{ github.ref == 'refs/heads/dev' && 'blazesnow/caddy-beta' || 'blazesnow/caddy' }}
-  GHCR_IMAGE_PREFIX: ${{ github.ref == 'refs/heads/dev' && 'ghcr.io/blazesnow/caddy-beta' || 'ghcr.io/blazesnow/caddy' }}
-  CACHE_NS: ${{ github.ref == 'refs/heads/dev' && 'beta-' || '' }}
+  # beta 模式：dev 分支，或推送 vX.Y.Z-beta.N 预发布 tag
+  BASE_TAG_SUFFIX: ${{ (github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta'))) && '-beta' || '' }}
+  IMAGE_PREFIX: ${{ (github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta'))) && 'blazesnow/caddy-beta' || 'blazesnow/caddy' }}
+  GHCR_IMAGE_PREFIX: ${{ (github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta'))) && 'ghcr.io/blazesnow/caddy-beta' || 'ghcr.io/blazesnow/caddy' }}
+  CACHE_NS: ${{ (github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta'))) && 'beta-' || '' }}
   # beta 模式（dev 分支手动触发）只构建这些插件，用于快速验证
   BETA_PLUGINS: cloudflare tencentcloud webdav
 

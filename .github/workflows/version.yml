@@ -16,3 +16,5 @@ jobs:
       uses: ncipollo/release-action@v1
       with:
         tag: ${{ github.ref_name }}
+        # vX.Y.Z-beta.N 视为预发布（Prerelease）
+        prerelease: ${{ contains(github.ref_name, '-beta') }}
