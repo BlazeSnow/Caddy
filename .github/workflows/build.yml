@@ -159,19 +159,12 @@ jobs:
         cache: false
 
     - name: Set versions
-      run: |
-        echo "CADDY_VERSION=${{ needs.versions.outputs.caddy }}" >> "$GITHUB_ENV"
-        echo "PLUGIN_VERSION=${{ matrix.plugin_version }}" >> "$GITHUB_ENV"
-        if [ "${{ env.BETA }}" = "true" ]; then
-          # beta 镜像不携带正式版版本号：tag 触发用 tag 名（如 1.4.4-beta.1），dev 分支为 dev
-          if [ "${{ github.ref_type }}" = "tag" ]; then
-            echo "APP_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
-          else
-            echo "APP_VERSION=dev" >> "$GITHUB_ENV"
-          fi
-        else
-          echo "APP_VERSION=$(cat VERSION)" >> "$GITHUB_ENV"
-        fi
+      env:
+        CADDY_VERSION: ${{ needs.versions.outputs.caddy }}
+        PLUGIN_VERSION: ${{ matrix.plugin_version }}
+        BETA: ${{ env.BETA }}
+        GITHUB_REF_TYPE: ${{ github.ref_type }}
+      run: bash set-versions.sh
 
     - name: Set Go version
       id: gover

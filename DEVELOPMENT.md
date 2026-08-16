@@ -13,6 +13,7 @@
 ├── plugins.json        # 插件清单（唯一数据源，构建矩阵由此生成）
 ├── VERSION             # 版本号（发版时 tag.ps1 的唯一读取来源）
 ├── versions.sh         # 版本检查 + 构建矩阵生成（versions job 的逻辑）
+├── set-versions.sh     # 写入本次构建的 Caddy/插件版本和镜像版本 label（build job）
 ├── check-base.sh       # 判断基础镜像是否需要重建（base job 的逻辑）
 ├── build-caddy.sh      # xcaddy 编译 amd64/arm64 二进制
 ├── write-manifest.sh   # 写入构建清单（finalize job）
@@ -127,7 +128,7 @@
 
 ```bash
 # bash 语法
-bash -n versions.sh check-base.sh build-caddy.sh write-manifest.sh sync-readme.sh
+bash -n versions.sh set-versions.sh check-base.sh build-caddy.sh write-manifest.sh sync-readme.sh
 
 # JSON 格式化 + 校验
 jq . plugins.json
