@@ -2,6 +2,7 @@
 # check-base.sh：判断静态基础镜像是否需要重建，输出 needed=true/false
 #
 # 依赖环境变量：
+#   GITHUB_REF         当前分支或 tag（refs/tags/* 时视为强制重建）
 #   GITHUB_OUTPUT       输出写入目标（GitHub Actions 自动提供）
 #   BASE_CHANGED        上游基础镜像 digest 是否变化（versions job 输出）
 #   FORCE_BUILD         强制构建（true/false）
@@ -12,7 +13,7 @@
 set -eu
 
 NEED="false"
-if [ "${BASE_CHANGED:-}" = "true" ] || [ "${FORCE_BUILD:-}" = "true" ]; then
+if [ "${BASE_CHANGED:-}" = "true" ] || [ "${FORCE_BUILD:-}" = "true" ] || [[ "$GITHUB_REF" == refs/tags/* ]]; then
 	NEED="true"
 else
 	for TAG in \
