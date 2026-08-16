@@ -34,6 +34,8 @@ env:
   IMAGE_PREFIX: ${{ (github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta'))) && 'blazesnow/caddy-beta' || 'blazesnow/caddy' }}
   GHCR_IMAGE_PREFIX: ${{ (github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta'))) && 'ghcr.io/blazesnow/caddy-beta' || 'ghcr.io/blazesnow/caddy' }}
   CACHE_NS: ${{ (github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta'))) && 'beta-' || '' }}
+  # beta 模式标志（dev 分支或 v*-beta* tag），供 build job 决定版本 label
+  BETA: ${{ github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta')) }}
   # beta 模式（dev 分支手动触发）只构建这些插件，用于快速验证
   BETA_PLUGINS: cloudflare tencentcloud webdav
 
@@ -160,7 +162,16 @@ jobs:
       run: |
         echo "CADDY_VERSION=${{ needs.versions.outputs.caddy }}" >> "$GITHUB_ENV"
         echo "PLUGIN_VERSION=${{ matrix.plugin_version }}" >> "$GITHUB_ENV"
-        echo "APP_VERSION=$(cat VERSION)" >> "$GITHUB_ENV"
+        if [ "${{ env.BETA }}" = "true" ]; then
+          # beta 镜像不携带正式版版本号：tag 触发用 tag 名（如 1.4.4-beta.1），dev 分支为 dev
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "APP_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            echo "APP_VERSION=dev" >> "$GITHUB_ENV"
+          fi
+        else
+          echo "APP_VERSION=$(cat VERSION)" >> "$GITHUB_ENV"
+        fi
 
     - name: Set Go version
       id: gover
