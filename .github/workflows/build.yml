@@ -97,23 +97,7 @@ jobs:
       env:
         BASE_CHANGED: ${{ needs.versions.outputs.base_changed }}
         FORCE_BUILD: ${{ github.event.inputs.force_build }}
-      run: |
-        set -eu
-        NEED="false"
-        if [ "${BASE_CHANGED:-}" = "true" ] || [ "${FORCE_BUILD:-}" = "true" ]; then
-          NEED="true"
-        else
-          for TAG in \
-            "${BASE_IMAGE_REPO}:${BASE_TAG_ALPINE}${BASE_TAG_SUFFIX}" \
-            "${BASE_IMAGE_REPO}:${BASE_TAG_DEBIAN}${BASE_TAG_SUFFIX}"; do
-            if ! docker manifest inspect "$TAG" >/dev/null 2>&1; then
-              NEED="true"
-              break
-            fi
-          done
-        fi
-        echo "needed=$NEED" >>"$GITHUB_OUTPUT"
-        echo "需要重建基础镜像：$NEED"
+      run: bash check-base.sh
 
     - name: Set up QEMU
       if: steps.check.outputs.needed == 'true'

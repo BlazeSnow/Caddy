@@ -11,6 +11,7 @@
 │   └── version.yml     # Release 工作流：推送 v* tag 时自动创建 Release
 ├── plugins.json        # 插件清单（唯一数据源，构建矩阵由此生成）
 ├── versions.sh         # 版本检查 + 构建矩阵生成（versions job 的逻辑）
+├── check-base.sh       # 判断基础镜像是否需要重建（base job 的逻辑）
 ├── build-caddy.sh      # xcaddy 编译 amd64/arm64 二进制
 ├── write-manifest.sh   # 写入构建清单（finalize job）
 ├── tag.ps1             # 本地打 tag 脚本（推送 tag 触发 Release）
@@ -109,7 +110,7 @@
 
 ```bash
 # bash 语法
-bash -n versions.sh build-caddy.sh write-manifest.sh
+bash -n versions.sh check-base.sh build-caddy.sh write-manifest.sh
 
 # JSON 格式化 + 校验
 jq . plugins.json
