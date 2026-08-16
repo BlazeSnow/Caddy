@@ -27,7 +27,7 @@
 
 ## 构建流水线（build.yml）
 
-每天 UTC 17:00（北京时间凌晨 1:00）自动触发，也可在 GitHub Actions 页面手动触发（`workflow_dispatch`，可选 `force_build=true` 强制忽略版本缓存重建所有镜像）；推送 `vX.Y.Z-beta.N` 格式的 tag 也会触发，按 beta 模式构建。
+每天 UTC 17:00（北京时间凌晨 1:00）自动触发，也可在 GitHub Actions 页面手动触发（`workflow_dispatch`，可选 `force_build=true` 强制忽略版本缓存重建所有镜像）；推送 `v*` 格式的 tag 也会触发——`vX.Y.Z-beta.N` 按 beta 模式构建，`vX.Y.Z` 稳定版按生产模式构建。
 
 ### 1. versions job —— 版本检查
 
@@ -103,7 +103,7 @@
    ```
 
 4. 脚本会先询问是否发布正式版（输入 `y` 为正式版，其他任意内容为 beta 测试版），再打印将要执行的操作，输入 `y` 确认后创建并推送 tag（`-NoPush` 只打 tag 不推送）
-5. 推送成功后，Actions 的 Version 工作流会自动创建 Release
+5. 推送成功后，Actions 的 Version 工作流会自动创建 Release，build.yml 同时触发构建生产镜像（不再依赖每日定时）
 
 > tag 必须是 `vX.Y.Z` 格式；本地或远程已存在同名 tag 时脚本会拒绝执行。
 

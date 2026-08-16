@@ -3,7 +3,7 @@ name: Build and Publish Caddy Plugins
 on:
   push:
     tags:
-    - 'v*-beta*'
+    - 'v*'
   workflow_dispatch:
     inputs:
       force_build:
