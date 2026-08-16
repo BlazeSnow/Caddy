@@ -64,13 +64,15 @@ try {
         }
         if ($LASTEXITCODE -ne 0) { throw 'git ls-remote 执行失败' }
 
-        $next = if ($nums.Count -eq 0) { 1 } else { ($nums | Measure-Object -Maximum).Maximum + 1 }
+        # 本地和远程可能同时存在同一 tag（如 v1.4.4-beta.1），去重后再计算序号
+        $existing = $nums | Sort-Object -Unique
+        $next = if ($existing.Count -eq 0) { 1 } else { ($existing | Measure-Object -Maximum).Maximum + 1 }
         $Tag = "$Tag-beta.$next"
-        if ($nums.Count -eq 0) {
+        if ($existing.Count -eq 0) {
             Write-Host "未找到已存在的 beta tag，本次为 $Tag"
         }
         else {
-            Write-Host "已存在 beta 序号：$($nums -join ', ')，本次为 $Tag"
+            Write-Host "已存在 beta 序号：$($existing -join ', ')，本次为 $Tag"
         }
     }
 
