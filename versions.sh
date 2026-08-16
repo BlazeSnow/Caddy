@@ -42,18 +42,18 @@ CADDY=$(go list -m -json github.com/caddyserver/caddy/v2@latest | jq -r '.Versio
 image_labels() {
 	local repo="${1#ghcr.io/}" tag="$2" token index digest man cfg
 	if [ -n "${GITHUB_TOKEN:-}" ]; then
-		token=$(curl -sf -u "x:${GITHUB_TOKEN}" "https://ghcr.io/token?scope=repository:${repo}:pull" | jq -r '.token') || {
+		token=$(curl -sfL -u "x:${GITHUB_TOKEN}" "https://ghcr.io/token?scope=repository:${repo}:pull" | jq -r '.token') || {
 			echo '{}'
 			return
 		}
 	else
 		# 无 token（如本地测试）时走匿名访问，仅适用于公开镜像
-		token=$(curl -sf "https://ghcr.io/token?scope=repository:${repo}:pull" | jq -r '.token') || {
+		token=$(curl -sfL "https://ghcr.io/token?scope=repository:${repo}:pull" | jq -r '.token') || {
 			echo '{}'
 			return
 		}
 	fi
-	index=$(curl -sf -H "Authorization: Bearer ${token}" \
+	index=$(curl -sfL -H "Authorization: Bearer ${token}" \
 		-H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json" \
 		"https://ghcr.io/v2/${repo}/manifests/${tag}") || {
 		echo '{}'
@@ -63,7 +63,11 @@ image_labels() {
 		echo '{}'
 		return
 	}
-	man=$(curl -sf -H "Authorization: Bearer ${token}" \
+	[ -n "$digest" ] || {
+		echo '{}'
+		return
+	}
+	man=$(curl -sfL -H "Authorization: Bearer ${token}" \
 		-H "Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json" \
 		"https://ghcr.io/v2/${repo}/manifests/${digest}") || {
 		echo '{}'
@@ -73,9 +77,18 @@ image_labels() {
 		echo '{}'
 		return
 	}
-	curl -sf -H "Authorization: Bearer ${token}" \
+	# blob 下载会 307 重定向到存储，需 -L 跟随；先抓原始响应避免空输入时 jq 退出码为 0 的误判
+	raw=$(curl -sfL -H "Authorization: Bearer ${token}" \
 		-H "Accept: application/vnd.oci.image.config.v1+json" \
-		"https://ghcr.io/v2/${repo}/blobs/${cfg}" | jq -c '.config.Labels // {}' || echo '{}'
+		"https://ghcr.io/v2/${repo}/blobs/${cfg}") || {
+		echo '{}'
+		return
+	}
+	[ -n "$raw" ] || {
+		echo '{}'
+		return
+	}
+	printf '%s' "$raw" | jq -c '.config.Labels // {}'
 }
 
 # 上游 alpine/debian 按架构 digest 映射（amd64/arm64）；查询失败返回空对象（跳过比对）
@@ -111,6 +124,8 @@ if [ "$BASE_CHANGED" != "true" ]; then
 		BASE_CHANGED="true"
 	fi
 fi
+echo "base_changed=$BASE_CHANGED"
+echo "force=$FORCE"
 
 # 插件矩阵
 if [ "$BETA_MODE" = "true" ]; then
@@ -132,6 +147,7 @@ while IFS= read -r entry; do
 	NEED="false"
 	if [ "$FORCE" = "true" ] || [ "$BASE_CHANGED" = "true" ]; then
 		NEED="true"
+		echo "  $name：强制构建（force=$FORCE base_changed=$BASE_CHANGED）"
 	else
 		labels=$(image_labels "${GHCR_IMAGE_PREFIX}" "$name")
 		built_caddy=$(printf '%s' "$labels" | jq -r '.["caddy-version"] // ""')
@@ -139,6 +155,7 @@ while IFS= read -r entry; do
 		if [ "$built_caddy" != "$CADDY" ] || [ "$built_plugin" != "$plugin_version" ]; then
 			NEED="true"
 		fi
+		echo "  $name：镜像 caddy=$built_caddy plugin=$built_plugin，最新 caddy=$CADDY plugin=$plugin_version -> $NEED"
 	fi
 
 	if [ "$NEED" = "true" ]; then
@@ -148,6 +165,7 @@ while IFS= read -r entry; do
 	fi
 done <<<"$SELECTED"
 
+echo "matrix=$MATRIX"
 echo "caddy=$CADDY" >>"$GITHUB_OUTPUT"
 echo "matrix=$MATRIX" >>"$GITHUB_OUTPUT"
 echo "base_changed=$BASE_CHANGED" >>"$GITHUB_OUTPUT"
