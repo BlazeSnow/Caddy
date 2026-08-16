@@ -29,24 +29,23 @@ env:
   BASE_IMAGE_REPO: ghcr.io/blazesnow/caddy-base
   BASE_TAG_ALPINE: alpine-3.24
   BASE_TAG_DEBIAN: debian-trixie-slim
-  # beta 模式：dev 分支，或推送 vX.Y.Z-beta.N 预发布 tag
+  # beta 模式标志（dev 分支或 v*-beta* tag），供 build job 决定版本 label
+  BETA: ${{ github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta')) }}
+  # beta 模式（dev 分支，或推送 vX.Y.Z-beta.N 预发布 tag）
   BASE_TAG_SUFFIX: ${{ (github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta'))) && '-beta' || '' }}
   IMAGE_PREFIX: ${{ (github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta'))) && 'blazesnow/caddy-beta' || 'blazesnow/caddy' }}
   GHCR_IMAGE_PREFIX: ${{ (github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta'))) && 'ghcr.io/blazesnow/caddy-beta' || 'ghcr.io/blazesnow/caddy' }}
-  CACHE_NS: ${{ (github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta'))) && 'beta-' || '' }}
-  # beta 模式标志（dev 分支或 v*-beta* tag），供 build job 决定版本 label
-  BETA: ${{ github.ref == 'refs/heads/dev' || (startsWith(github.ref, 'refs/tags/') && contains(github.ref, '-beta')) }}
   # beta 模式（dev 分支手动触发）只构建这些插件，用于快速验证
   BETA_PLUGINS: cloudflare tencentcloud webdav
 
 jobs:
+  # 读取已有镜像的版本信息（label）对比最新版本，决定 matrix / base_changed
   versions:
     runs-on: ubuntu-latest
 
     outputs:
-      caddy: ${{ steps.caddy.outputs.caddy }}
+      caddy: ${{ steps.versions.outputs.caddy }}
       matrix: ${{ steps.versions.outputs.matrix }}
-      all_versions: ${{ steps.versions.outputs.all_versions }}
       base_changed: ${{ steps.versions.outputs.base_changed }}
 
     steps:
@@ -59,31 +58,17 @@ jobs:
         go-version: 'stable'
         cache: false
 
-    - name: Get Caddy version
-      id: caddy
-      run: echo "caddy=$(go list -m -json github.com/caddyserver/caddy/v2@latest | jq -r '.Version')" >> "$GITHUB_OUTPUT"
-
-    - name: Restore build manifest
-      id: manifest-cache
-      uses: actions/cache/restore@v6
-      with:
-        path: .build-cache/manifest.json
-        key: build-manifest-${{ env.CACHE_NS }}${{ steps.caddy.outputs.caddy }}
-        restore-keys: |
-          build-manifest-${{ env.CACHE_NS }}${{ steps.caddy.outputs.caddy }}-
-
-    - name: Get plugin versions and build matrix
+    - name: Get versions and build matrix
       id: versions
       env:
         FORCE_BUILD: ${{ github.event.inputs.force_build }}
       run: bash versions.sh
 
-  # 静态基础镜像：依赖/Caddyfile/环境变量等固定层，只推 GHCR（ghcr.io/blazesnow/caddy-base）。
-  # 上游基础镜像 digest 变化（base_changed）、强制构建或镜像缺失时重建；
-  # 插件 job 的 Dockerfile 从它 FROM，不再重复执行 apk/apt 等步骤。
+  # 静态基础镜像：由 versions job 的 base_changed 判定（上游 digest 变化 / 镜像缺失 / 强制触发）
   base:
     runs-on: ubuntu-latest
     needs: versions
+    if: needs.versions.outputs.base_changed == 'true'
 
     steps:
     - name: Checkout code
@@ -96,27 +81,16 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Check if base image needs rebuild
-      id: check
-      env:
-        BASE_CHANGED: ${{ needs.versions.outputs.base_changed }}
-        FORCE_BUILD: ${{ github.event.inputs.force_build }}
-      run: bash check-base.sh
-
     - name: Set up QEMU
-      if: steps.check.outputs.needed == 'true'
       uses: docker/setup-qemu-action@v4
 
     - name: Set up Docker Buildx
-      if: steps.check.outputs.needed == 'true'
       uses: docker/setup-buildx-action@v4
 
     - name: Set base digests
-      if: steps.check.outputs.needed == 'true'
       run: bash set-base-digests.sh
 
     - name: Build and push base image (Alpine)
-      if: steps.check.outputs.needed == 'true'
       uses: docker/build-push-action@v7
       with:
         context: .
@@ -131,7 +105,6 @@ jobs:
           ${{ env.BASE_IMAGE_REPO }}:${{ env.BASE_TAG_ALPINE }}${{ env.BASE_TAG_SUFFIX }}
 
     - name: Build and push base image (Debian)
-      if: steps.check.outputs.needed == 'true'
       uses: docker/build-push-action@v7
       with:
         context: .
@@ -145,6 +118,7 @@ jobs:
         tags: |
           ${{ env.BASE_IMAGE_REPO }}:${{ env.BASE_TAG_DEBIAN }}${{ env.BASE_TAG_SUFFIX }}
 
+  # 动态矩阵构建：只构建 versions job 判定为需要重建的插件
   build:
     runs-on: ubuntu-latest
     needs: [versions, base]
@@ -263,22 +237,3 @@ jobs:
         tags: |
           ${{ env.IMAGE_PREFIX }}:${{ matrix.name }}-slim
           ${{ env.GHCR_IMAGE_PREFIX }}:${{ matrix.name }}-slim
-
-  finalize:
-    runs-on: ubuntu-latest
-    needs: [versions, build]
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v7
-
-    - name: Write build manifest
-      env:
-        ALL_VERSIONS: ${{ needs.versions.outputs.all_versions }}
-      run: bash write-manifest.sh
-
-    - name: Save build manifest
-      uses: actions/cache/save@v6
-      with:
-        path: .build-cache/manifest.json
-        key: build-manifest-${{ env.CACHE_NS }}${{ needs.versions.outputs.caddy }}-${{ github.run_id }}
