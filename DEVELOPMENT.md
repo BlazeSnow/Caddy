@@ -11,6 +11,7 @@
 │   ├── version.yml     # Release 工作流：推送 v* tag 时自动创建 Release
 │   └── readme.yml      # README 同步工作流：推送到 Docker Hub 仓库描述
 ├── plugins.json        # 插件清单（唯一数据源，构建矩阵由此生成）
+├── VERSION             # 版本号（发版时 tag.ps1 的唯一读取来源）
 ├── versions.sh         # 版本检查 + 构建矩阵生成（versions job 的逻辑）
 ├── check-base.sh       # 判断基础镜像是否需要重建（base job 的逻辑）
 ├── build-caddy.sh      # xcaddy 编译 amd64/arm64 二进制
@@ -92,7 +93,7 @@
 
 `version.yml` 已改为：**推送 `v*` 格式的 tag 时自动创建 GitHub Release**，无需手动操作页面。
 
-1. 更新 `CHANGELOG.md`，在顶部加当前版本的记录（`## vX.Y.Z` + 日期 + 更新内容）
+1. 更新 `VERSION` 文件（写入要发布的版本号，这是发版版本的唯一来源）；同时在 `CHANGELOG.md` 顶部加当前版本的记录（手工维护，无需与 VERSION 严格对齐）
 2. 提交并推送代码
 3. 运行发布脚本：
 
@@ -101,19 +102,17 @@
    .\tag.ps1 -Tag v1.5.0   # 或显式指定
    ```
 
-4. 脚本会打印将要执行的操作，输入 `y` 确认后创建并推送 tag（`-NoPush` 只打 tag 不推送）
+4. 脚本会先询问是否发布正式版（输入 `y` 为正式版，其他任意内容为 beta 测试版），再打印将要执行的操作，输入 `y` 确认后创建并推送 tag（`-NoPush` 只打 tag 不推送）
 5. 推送成功后，Actions 的 Version 工作流会自动创建 Release
 
 > tag 必须是 `vX.Y.Z` 格式；本地或远程已存在同名 tag 时脚本会拒绝执行。
 
 ### beta 预发布
 
-需要发布 beta 测试版时，用 `-Beta` 打预发布 tag：
+运行 `.\tag.ps1` 时，脚本会先询问**是否发布正式版**：
 
-```powershell
-.\tag.ps1 -Beta                 # 自动读最新版本，如 v1.4.4-beta.1
-.\tag.ps1 -Tag v1.5.0 -Beta     # 或指定基础版本
-```
+- 输入 `y`：打正式版 tag（`vX.Y.Z`），创建正式 Release
+- 输入其他任意内容：打 beta 测试版 tag（`vX.Y.Z-beta.N`），同时触发 beta 镜像构建并创建 Prerelease
 
 - beta tag 格式为 `vX.Y.Z-beta.N`，序号 N 自动取本地 + 远程已有序号的最大值 +1（如 v1.4.4-beta.1 → v1.4.4-beta.2）
 - 推送后同时触发两个工作流：`build.yml` 按 beta 模式构建镜像（`blazesnow/caddy-beta`，只含 `BETA_PLUGINS`），`version.yml` 创建标为 **Prerelease** 的 Release
