@@ -25,14 +25,37 @@ if [ -f .build-cache/manifest.json ]; then
 	MANIFEST=$(cat .build-cache/manifest.json)
 fi
 
-# 基础镜像指纹：pin 的 tag 当前内容（patch 更新时变化）
-ALPINE_FP=$(curl -sf "https://hub.docker.com/v2/repositories/library/alpine/tags/${BASE_ALPINE##*:}" | jq -c '[.images[].digest] | sort') || ALPINE_FP="unknown"
-DEBIAN_FP=$(curl -sf "https://hub.docker.com/v2/repositories/library/debian/tags/${BASE_DEBIAN##*:}" | jq -c '[.images[].digest] | sort') || DEBIAN_FP="unknown"
+# 获取基础镜像指纹（该 tag 下所有平台的 digest 排序）。
+# curl 失败（限流/网络）或响应为空时返回 "unknown"。注意不能用管道退出码判断——
+# 空输入时 jq 会输出 [] 且退出码为 0，因此先抓原始响应再解析。
+base_fingerprint() {
+	local url="$1" raw fp
+	raw=$(curl -sf "$url") || {
+		echo "unknown"
+		return
+	}
+	[ -n "$raw" ] || {
+		echo "unknown"
+		return
+	}
+	fp=$(printf '%s' "$raw" | jq -c '[.images[].digest] | sort') || {
+		echo "unknown"
+		return
+	}
+	echo "$fp"
+}
+ALPINE_FP=$(base_fingerprint "https://hub.docker.com/v2/repositories/library/alpine/tags/${BASE_ALPINE##*:}")
+DEBIAN_FP=$(base_fingerprint "https://hub.docker.com/v2/repositories/library/debian/tags/${BASE_DEBIAN##*:}")
 
+# manifest 缺失时（如 tag 触发的运行访问不到 dev 分支缓存）不强制重建，
+# 基础镜像是否缺失由 check-base.sh 的 manifest inspect 兜底
 BASE_CHANGED="false"
-if [ "$(printf '%s' "$MANIFEST" | jq -r '.base_alpine // "none"')" != "$ALPINE_FP" ] ||
-	[ "$(printf '%s' "$MANIFEST" | jq -r '.base_debian // "none"')" != "$DEBIAN_FP" ]; then
-	BASE_CHANGED="true"
+if [ "$(printf '%s' "$MANIFEST" | jq -r 'has("base_alpine") and has("base_debian")')" = "true" ] &&
+	[ "$ALPINE_FP" != "unknown" ] && [ "$DEBIAN_FP" != "unknown" ]; then
+	if [ "$(printf '%s' "$MANIFEST" | jq -r '.base_alpine')" != "$ALPINE_FP" ] ||
+		[ "$(printf '%s' "$MANIFEST" | jq -r '.base_debian')" != "$DEBIAN_FP" ]; then
+		BASE_CHANGED="true"
+	fi
 fi
 
 BETA_MODE="false"

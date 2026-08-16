@@ -68,6 +68,7 @@
 - 同时在 build job 缓存 Go 编译缓存（`~/.cache/go-build`，key 为 `go-build-<Caddy版本>-<Go版本>`，Go 版本由 `go env GOVERSION` 运行时解析）。编译缓存内容寻址、与插件无关，Caddy 核心代码的编译产物在 25 个 job 间复用，全量重建（如 Caddy 升级）时只有第一个 job 全量编译，其余 job 只需编译各自插件包；Go 工具链升级会自动换 key 触发重编，不会用上过期的缓存
 - 基础镜像只推 GHCR，插件镜像推 Docker Hub 时首次会带上基础镜像的层，同一 registry 内按 digest 去重，之后不会重复上传
 - 上游基础镜像 tag 升级时，记得同步更新 `BASE_ALPINE` / `BASE_DEBIAN` 以及 `BASE_TAG_ALPINE` / `BASE_TAG_DEBIAN` 四处的版本号（base job 会检测到 digest 变化并重建）
+- GitHub Actions 缓存按 ref 作用域隔离：**只有默认分支（main）上创建的缓存对所有 ref 可见**，dev 分支（beta）创建的缓存，tag 推送触发的运行访问不到。因此 beta tag 运行时 `build-manifest` / `go-build` 缓存会 miss（首个 job 全量编译并把缓存写入该 tag 作用域，插件全部重建一次）；manifest 缺失时 `base_changed` 不会强制重建 base，基础镜像是否缺失由 `check-base.sh` 的镜像存在性检查兜底。main 跑过新管线后 `go-mod` / `go-build` 会存到 main，tag 运行即可命中
 
 ### 5. 开发版（beta）镜像
 
