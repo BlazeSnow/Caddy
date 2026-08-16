@@ -160,6 +160,7 @@ jobs:
       run: |
         echo "CADDY_VERSION=${{ needs.versions.outputs.caddy }}" >> "$GITHUB_ENV"
         echo "PLUGIN_VERSION=${{ matrix.plugin_version }}" >> "$GITHUB_ENV"
+        echo "APP_VERSION=$(cat VERSION)" >> "$GITHUB_ENV"
 
     - name: Set Go version
       id: gover
@@ -226,6 +227,7 @@ jobs:
         platforms: linux/amd64,linux/arm64
         build-args: |
           BASE_IMAGE=${{ env.BASE_IMAGE_REPO }}:${{ env.BASE_TAG_ALPINE }}${{ env.BASE_TAG_SUFFIX }}
+          VERSION=${{ env.APP_VERSION }}
         tags: |
           ${{ env.IMAGE_PREFIX }}:${{ matrix.name }}-alpine
           ${{ env.IMAGE_PREFIX }}:${{ matrix.name }}
@@ -241,6 +243,7 @@ jobs:
         platforms: linux/amd64,linux/arm64
         build-args: |
           BASE_IMAGE=${{ env.BASE_IMAGE_REPO }}:${{ env.BASE_TAG_DEBIAN }}${{ env.BASE_TAG_SUFFIX }}
+          VERSION=${{ env.APP_VERSION }}
         tags: |
           ${{ env.IMAGE_PREFIX }}:${{ matrix.name }}-slim
           ${{ env.GHCR_IMAGE_PREFIX }}:${{ matrix.name }}-slim
