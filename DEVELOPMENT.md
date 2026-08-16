@@ -53,8 +53,8 @@
 - `matrix.include` 用 `fromJSON(needs.versions.outputs.matrix)` 动态生成，每个插件一个 job，并 `needs: [versions, base]`，保证基础镜像就绪
 - **跳过判断**：在 `versions` job 由 `versions.sh` 完成——插件版本、基础镜像指纹都没变的插件不会进入 matrix，build job 只有在 matrix 非空时才会运行（`if: needs.versions.outputs.matrix != '[]'`），避免版本没变就重复编译
 - **编译**：`xcaddy build` 产出 `linux/amd64`、`linux/arm64` 两个二进制（CGO 关闭）
-- **推送**：Docker Buildx 多架构构建，`Dockerfile` 从 `ghcr.io/blazesnow/caddy-base` 继承、仅注入二进制（`COPY --chmod`，无 RUN 层），推送到 Docker Hub（`blazesnow/caddy`）和 GHCR（`ghcr.io/blazesnow/caddy`），每个插件打 `<插件>-alpine` 和 `<插件>` 两个 tag
-- 构建完成后写回标记文件（`echo 版本号 > .build-cache/...`），供下次跳过判断使用
+- **推送**：Docker Buildx 多架构构建，`Dockerfile` 从 `ghcr.io/blazesnow/caddy-base` 继承、仅注入二进制（`COPY --chmod`，无 RUN 层），推送到 Docker Hub（`blazesnow/caddy`）和 GHCR（`ghcr.io/blazesnow/caddy`），每个插件打 `<插件>-alpine` 和 `<插件>` 两个 tag。插件镜像没有任何 RUN 步骤，多平台构建不需要 QEMU（只有 base job 需要）
+- 构建完成后由 `finalize` job 用 `write-manifest.sh` 把本次各插件版本和基础镜像指纹写入 `.build-cache/manifest.json` 并缓存，供下次跳过判断使用
 
 ### 4. 注意事项
 
