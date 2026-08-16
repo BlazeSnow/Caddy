@@ -66,7 +66,12 @@ try {
 
         $next = if ($nums.Count -eq 0) { 1 } else { ($nums | Measure-Object -Maximum).Maximum + 1 }
         $Tag = "$Tag-beta.$next"
-        Write-Host "beta 序号：已存在 $($nums -join ', ')，下一个为 $next"
+        if ($nums.Count -eq 0) {
+            Write-Host "未找到已存在的 beta tag，本次为 $Tag"
+        }
+        else {
+            Write-Host "已存在 beta 序号：$($nums -join ', ')，本次为 $Tag"
+        }
     }
 
     # 4. 检查本地和远程是否已存在该 tag
