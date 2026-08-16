@@ -29,7 +29,7 @@
 
 ## 构建流水线（build.yml）
 
-每天 UTC 17:00（北京时间凌晨 1:00）自动触发，也可在 GitHub Actions 页面手动触发（`workflow_dispatch`，可选 `force_build=true` 强制忽略版本缓存重建所有镜像）；推送 `v*` 格式的 tag 也会触发——`vX.Y.Z-beta.N` 按 beta 模式构建，`vX.Y.Z` 稳定版按生产模式构建。
+每天 UTC 17:00（北京时间凌晨 1:00）自动触发，也可在 GitHub Actions 页面手动触发（`workflow_dispatch`，可选 `force_build=true` 强制忽略版本缓存重建所有镜像）；推送 `v*` 格式的 tag 也会触发——`vX.Y.Z-beta.N` 按 beta 模式构建，`vX.Y.Z` 稳定版按生产模式构建，且 **tag 触发视为强制构建**（全部插件重建，不受跳过逻辑约束）
 
 ### 1. versions job —— 版本检查
 
@@ -122,7 +122,7 @@
 - beta tag 格式为 `vX.Y.Z-beta.N`，序号 N 自动取本地 + 远程已有序号的最大值 +1（如 v1.4.4-beta.1 → v1.4.4-beta.2）
 - 推送后同时触发两个工作流：`build.yml` 按 beta 模式构建镜像（`blazesnow/caddy-beta`，只含 `BETA_PLUGINS`），`version.yml` 创建标为 **Prerelease** 的 Release
 - beta tag 可以打在任意分支（dev 或 main）的提交上，tag 名中的 `-beta` 本身决定 beta 模式
-- 仍受 manifest 跳过逻辑约束：插件版本和基础镜像都没变时构建会自动跳过（此时只产生 Prerelease）；需要强制重建时在 Actions 页面手动触发 dev 分支并勾选 `force_build`
+- 仍受 manifest 跳过逻辑约束：**非 tag 触发**时插件版本和基础镜像都没变则构建自动跳过；tag 触发（含 beta tag）视为强制构建，插件全部重建。base 是否重建始终由上游 digest / force / 镜像缺失判定
 
 ## 本地验证
 

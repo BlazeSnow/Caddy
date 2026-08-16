@@ -19,6 +19,10 @@ FORCE="false"
 if [ "${FORCE_BUILD:-}" = "true" ]; then
 	FORCE="true"
 fi
+# 推送 tag（发布 beta/稳定版）视为强制构建：忽略跳过逻辑，全部插件重建
+if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+	FORCE="true"
+fi
 
 MANIFEST="{}"
 if [ -f .build-cache/manifest.json ]; then
