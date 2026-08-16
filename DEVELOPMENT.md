@@ -8,12 +8,14 @@
 .
 ├── .github/workflows/
 │   ├── build.yml       # 主构建流水线：查询版本 → 基础镜像 → 编译 → 推送镜像
-│   └── version.yml     # Release 工作流：推送 v* tag 时自动创建 Release
+│   ├── version.yml     # Release 工作流：推送 v* tag 时自动创建 Release
+│   └── readme.yml      # README 同步工作流：推送到 Docker Hub 仓库描述
 ├── plugins.json        # 插件清单（唯一数据源，构建矩阵由此生成）
 ├── versions.sh         # 版本检查 + 构建矩阵生成（versions job 的逻辑）
 ├── check-base.sh       # 判断基础镜像是否需要重建（base job 的逻辑）
 ├── build-caddy.sh      # xcaddy 编译 amd64/arm64 二进制
 ├── write-manifest.sh   # 写入构建清单（finalize job）
+├── sync-readme.sh      # 同步 README 到 Docker Hub（readme.yml 的逻辑）
 ├── tag.ps1             # 本地打 tag 脚本（推送 tag 触发 Release）
 ├── Dockerfile          # 运行镜像：仅注入对应架构二进制，静态层来自 Dockerfile.base
 ├── Dockerfile.base     # 静态基础镜像：依赖 + Caddyfile + 环境变量 + 启动命令
@@ -110,7 +112,7 @@
 
 ```bash
 # bash 语法
-bash -n versions.sh check-base.sh build-caddy.sh write-manifest.sh
+bash -n versions.sh check-base.sh build-caddy.sh write-manifest.sh sync-readme.sh
 
 # JSON 格式化 + 校验
 jq . plugins.json
