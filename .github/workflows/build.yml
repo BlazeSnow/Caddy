@@ -62,6 +62,7 @@ jobs:
       id: versions
       env:
         FORCE_BUILD: ${{ github.event.inputs.force_build }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: bash versions.sh
 
   # 静态基础镜像：由 versions job 的 base_changed 判定（上游 digest 变化 / 镜像缺失 / 强制触发）

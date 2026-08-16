@@ -41,10 +41,18 @@ CADDY=$(go list -m -json github.com/caddyserver/caddy/v2@latest | jq -r '.Versio
 # 读取镜像 labels（GHCR registry API）；镜像缺失或查询失败返回空对象
 image_labels() {
 	local repo="${1#ghcr.io/}" tag="$2" token index digest man cfg
-	token=$(curl -sf -u "x:${GITHUB_TOKEN}" "https://ghcr.io/token?scope=repository:${repo}:pull" | jq -r '.token') || {
-		echo '{}'
-		return
-	}
+	if [ -n "${GITHUB_TOKEN:-}" ]; then
+		token=$(curl -sf -u "x:${GITHUB_TOKEN}" "https://ghcr.io/token?scope=repository:${repo}:pull" | jq -r '.token') || {
+			echo '{}'
+			return
+		}
+	else
+		# 无 token（如本地测试）时走匿名访问，仅适用于公开镜像
+		token=$(curl -sf "https://ghcr.io/token?scope=repository:${repo}:pull" | jq -r '.token') || {
+			echo '{}'
+			return
+		}
+	fi
 	index=$(curl -sf -H "Authorization: Bearer ${token}" \
 		-H "Accept: application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json" \
 		"https://ghcr.io/v2/${repo}/manifests/${tag}") || {
