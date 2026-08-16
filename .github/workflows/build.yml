@@ -222,6 +222,9 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
 
+    - name: Set base digests
+      run: bash set-base-digests.sh
+
     - name: Build and push (Alpine)
       uses: docker/build-push-action@v7
       with:
@@ -231,6 +234,7 @@ jobs:
         platforms: linux/amd64,linux/arm64
         build-args: |
           BASE_IMAGE=${{ env.BASE_IMAGE_REPO }}:${{ env.BASE_TAG_ALPINE }}${{ env.BASE_TAG_SUFFIX }}
+          BASE_DIGEST=${{ env.BASE_DIGEST_ALPINE }}
           VERSION=${{ env.APP_VERSION }}
           CADDY_VERSION=${{ env.CADDY_VERSION }}
           PLUGIN_VERSION=${{ env.PLUGIN_VERSION }}
@@ -249,6 +253,7 @@ jobs:
         platforms: linux/amd64,linux/arm64
         build-args: |
           BASE_IMAGE=${{ env.BASE_IMAGE_REPO }}:${{ env.BASE_TAG_DEBIAN }}${{ env.BASE_TAG_SUFFIX }}
+          BASE_DIGEST=${{ env.BASE_DIGEST_DEBIAN }}
           VERSION=${{ env.APP_VERSION }}
           CADDY_VERSION=${{ env.CADDY_VERSION }}
           PLUGIN_VERSION=${{ env.PLUGIN_VERSION }}
