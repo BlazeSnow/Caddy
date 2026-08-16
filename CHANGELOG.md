@@ -5,7 +5,12 @@
 1. 构建优化：静态层（依赖、默认配置、环境变量）拆分为独立基础镜像 `ghcr.io/blazesnow/caddy-base`，插件镜像只注入对应架构的二进制，重建时不再重复安装依赖
 2. 构建优化：Go 编译缓存跨插件共享，Caddy 版本升级等全量重建场景下各插件只编译自身的代码，其余复用核心编译产物，构建时间大幅缩短
 3. 构建优化：插件镜像构建不再需要 QEMU 模拟执行
-4. 重构：基础镜像重建判断（`check-base.sh`）与 README 同步（`sync-readme.sh`）从工作流内联脚本拆分为仓库根目录独立脚本，全部脚本统一经 shfmt 格式化
+4. 镜像自描述：插件镜像写入 `org.opencontainers.image.version`（正式版号 / beta tag 名 / dev）、`caddy-version`、`plugin-version`、`org.opencontainers.image.base.name` 等 label，`docker inspect` 即可查看镜像构成
+5. 镜像自描述：base 镜像写入上游 alpine/debian 按架构 digest（`base-upstream-digest-amd64` / `base-upstream-digest-arm64`），插件镜像自动继承，作为基础镜像的构建记录
+6. 重建判定：改为读取已有镜像的 label 对比最新版本决定是否构建（镜像即构建记录），移除了 cache 中的 manifest 记录，tag 触发的运行不再受缓存作用域影响
+7. 发版流程：新增 beta 预发布支持（`vX.Y.Z-beta.N` tag 自动创建 Prerelease 并构建 beta 镜像），版本号由仓库根目录 `VERSION` 文件维护，`tag.ps1` 运行时交互选择正式版 / beta 版
+8. 发版流程：推送 `v*` tag 触发构建，且 tag 触发视为强制构建（插件与 base 镜像全部重建，忽略跳过逻辑）
+9. 重构：构建与发版逻辑全部拆分为仓库根目录独立脚本，统一经 shfmt 格式化，可本地 `bash -n` 验证
 
 ## v1.4.3
 
